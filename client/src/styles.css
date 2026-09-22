@@ -1,127 +1,23 @@
-/* Deliberately plain. Module 3 covered styling in React properly: CSS modules,
-   Tailwind, styled-components, a component library. Replace this with whichever
-   you chose and can defend. */
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
 
-:root {
-  color-scheme: light dark;
-  --bg: #fbfbfd;
-  --fg: #1a1a1f;
-  --muted: #5c5c6b;
-  --line: #dcdce6;
-  --card: #ffffff;
-  --accent: #4a3f8f;
-  --warn-bg: #fff6dd;
-  --warn-line: #e0bf6a;
-  --error-bg: #fdeaea;
-  --error-line: #d98a8a;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14141a;
-    --fg: #ececf2;
-    --muted: #a0a0b0;
-    --line: #33333f;
-    --card: #1d1d25;
-    --accent: #a99cf0;
-    --warn-bg: #3a3320;
-    --warn-line: #7d6a30;
-    --error-bg: #3a2323;
-    --error-line: #7d4040;
-  }
-}
-
+:root { --ink: #18151d; --muted: #716c78; --lavender: #f8f5ff; --lavender-deep: #e9defb; --yellow: #ffd451; --orange: #ff9b50; --orange-dark: #d96b14; --line: #aaa4b0; --white: #fff; }
 * { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
-}
-
-.page { max-width: 44rem; margin: 0 auto; padding: 2rem 1rem 4rem; }
-
-h1 { margin: 0 0 .25rem; font-size: 1.9rem; }
-h2 { margin: 0 0 .75rem; font-size: 1.15rem; }
-h3 { margin: 0; font-size: 1.05rem; }
-
-.lede, .muted { color: var(--muted); }
-.lede { margin-top: 0; }
-
-.demo-notice {
-  background: var(--warn-bg);
-  border: 1px solid var(--warn-line);
-  border-radius: .5rem;
-  padding: .9rem 1rem;
-  margin: 1.5rem 0;
-}
-
-.error {
-  background: var(--error-bg);
-  border: 1px solid var(--error-line);
-  border-radius: .5rem;
-  padding: .75rem 1rem;
-}
-
-.card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: .5rem;
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-
-form.card { display: flex; flex-direction: column; gap: .35rem; }
-
-label { font-size: .85rem; color: var(--muted); margin-top: .5rem; }
-
-input, textarea {
-  font: inherit;
-  color: inherit;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: .35rem;
-  padding: .5rem .6rem;
-}
-
-button {
-  font: inherit;
-  cursor: pointer;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: #fff;
-  border-radius: .35rem;
-  padding: .45rem .9rem;
-  margin-top: .75rem;
-  align-self: flex-start;
-}
-
-button:disabled { opacity: .6; cursor: default; }
-
-/* Never remove a focus outline without replacing it. Keyboard users need to
-   see where they are, and it is checked. */
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-.list { list-style: none; padding: 0; margin: 0; }
-
-.row-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
-
-.spooky { color: var(--accent); letter-spacing: .15em; }
-
-.card footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-top: .5rem;
-  font-size: .85rem;
-  color: var(--muted);
-}
-
-.card footer button {
-  margin-top: 0;
-  background: transparent;
-  color: var(--muted);
-  border-color: var(--line);
-}
+body { margin: 0; color: var(--ink); background: var(--lavender); font: 16px/1.35 'Nunito', sans-serif; }
+button, input, select, textarea { font: inherit; }
+button, a { color: inherit; }
+button { cursor: pointer; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #f6a5c0; outline-offset: 3px; }
+.loading { min-height: 100vh; display: grid; place-items: center; font: 700 1.4rem 'Baloo 2', sans-serif; }
+.topbar { height: 92px; padding: 0 max(6vw, 32px); background: var(--white); border-bottom: 1px solid #c9c4ce; display: flex; align-items: center; justify-content: space-between; }
+.logo { display: flex; align-items: center; width: 190px; text-decoration: none; }.logo img { display: block; width: 180px; height: auto; }
+.topbar nav { display: flex; align-items: center; gap: 10px; margin-left: auto; margin-right: 72px; }.topbar nav a { display: flex; align-items: center; gap: 9px; padding: 10px 28px; text-decoration: none; color: #615d66; font-size: 1.25rem; font-weight: 700; border-radius: 999px; }.topbar nav a img { width: 25px; height: 25px; object-fit: contain; }.topbar nav a.active { background: var(--yellow); color: var(--ink); }
+.signout, .outline { padding: 8px 22px; border: 1px solid #a9a5aa; border-radius: 999px; background: #fff; }.signout { text-transform: capitalize; color: #605b62; font-size: 1.2rem; }
+.page { max-width: 1260px; margin: 0 auto; padding: 34px 28px 80px; }.intro { margin-bottom: 24px; }.eyebrow { margin: 0 0 4px; color: #d67a35; font-size: .75rem; font-weight: 800; letter-spacing: .15em; }.intro h1, .pet-hero h1 { margin: 0; font: 800 3rem/1 'Baloo 2', sans-serif; text-transform: uppercase; letter-spacing: .02em; }.intro p:not(.eyebrow) { margin: 14px 0 0; color: var(--muted); font-size: 1.15rem; }
+.pet-grid, .post-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 38px; }.pet-card { padding: 0; overflow: hidden; border: 0; border-radius: 20px; background: transparent; text-align: left; box-shadow: 0 12px 22px rgba(77, 53, 105, .08); transition: transform .2s ease; }.pet-card:hover { transform: translateY(-4px); }.pet-card img { display: block; width: 100%; height: 258px; object-fit: cover; }.pet-card-copy { min-height: 112px; padding: 18px 20px; background: #fff0c8; }.pet-card:nth-child(2) .pet-card-copy { background: #e9defb; }.pet-card:nth-child(3) .pet-card-copy { background: #fff0c8; }.pet-card h2, .post-card h2 { margin: 0; font: 800 1.8rem/1 'Baloo 2', sans-serif; text-transform: uppercase; }.pet-card em { color: #605a62; }.pet-card p { margin: 5px 0 0; font-size: .9rem; }
+.surface { background: var(--white); border: 1px solid #aaa5ad; border-radius: 28px; padding: 28px 40px; }.add-pet { margin-top: 42px; }.surface h2 { margin: 0 0 18px; font: 600 2rem/1 'Baloo 2', sans-serif; }.form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: end; }.form-grid label, .entry-form label { display: grid; gap: 7px; color: #6d6871; font-size: 1rem; }.optional { font-style: italic; color: #99929b; font-size: .85em; }input, select, textarea { width: 100%; border: 1px solid #aaa4ad; border-radius: 10px; color: var(--ink); background: #fbf9ff; padding: 13px 14px; min-height: 52px; }textarea { resize: vertical; }.primary { min-height: 49px; padding: 10px 28px; border: 0; border-bottom: 4px solid var(--orange-dark); border-radius: 999px; color: #170f0b; background: var(--orange); font-weight: 800; text-transform: capitalize; }.add-pet .primary { grid-column: 1 / -1; width: min(75%, 900px); justify-self: center; margin-top: 16px; }
+.empty { padding: 28px; border: 1px dashed #b9b0c4; border-radius: 16px; color: var(--muted); text-align: center; background: rgba(255,255,255,.55); }.back-link { padding: 0; border: 0; background: transparent; color: #67616b; font-size: 1rem; margin-bottom: 18px; }.pet-hero { display: grid; grid-template-columns: 240px 1fr auto; gap: 40px; align-items: center; padding: 20px 26px; border: 1px solid #b9add2; border-radius: 24px; background: var(--lavender-deep); }.pet-hero img { width: 240px; height: 200px; border-radius: 18px; object-fit: cover; }.pet-hero em { color: var(--muted); }.pet-hero p { margin: 6px 0; }.hero-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }.hero-actions .primary { width: 100%; margin-top: 28px; }.danger { color: #d33d3d; }.tabs { display: flex; width: max-content; margin: 18px 6px 24px; border-radius: 99px; overflow: hidden; background: #ffe4d0; }.tabs button { min-width: 160px; padding: 9px 25px; border: 0; background: transparent; font-weight: 700; }.tabs button.selected { border-bottom: 4px solid var(--orange-dark); border-radius: 99px; background: var(--orange); }.diary-layout { display: grid; grid-template-columns: 380px 1fr; gap: 64px; }.entry-form { display: grid; gap: 14px; align-self: start; }.entry-form h2 { text-transform: capitalize; }.entry-form .primary { margin: 6px auto 0; }.entries { display: grid; gap: 22px; }.memory, .vet-record { display: flex; gap: 20px; min-height: 130px; padding: 20px; border: 1px solid #aaa5ad; border-radius: 22px; background: var(--white); }.memory img { width: 126px; height: 95px; flex: 0 0 auto; border-radius: 18px; object-fit: cover; }.memory div, .vet-record div:last-child { display: grid; align-content: center; gap: 4px; }.memory em, .vet-record em { color: var(--muted); }.memory p, .vet-record p { margin: 4px 0 0; color: var(--muted); }.record-icon { display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%; background: #fff0c8; color: var(--orange-dark); font-size: 1.5rem; }
+.rehome-form { margin: 18px 26px 36px; }.rehome-form .form-grid { grid-template-columns: 1.05fr 1.2fr 1fr 1fr; }.rehome-form h2 { font-size: 1.6rem; }.post-card { position: relative; }.post-card img { display: block; width: 100%; height: 275px; object-fit: cover; border-radius: 18px; }.post-card p { margin: 12px 0 2px; color: var(--muted); }.post-card h2 { font-size: 1.55rem; text-transform: none; }.post-card a { display: block; margin: 8px 0; color: #e88917; text-decoration: none; }.post-card span { display: block; line-height: 1.45; }.remove { position: absolute; top: 12px; right: 12px; padding: 6px; border: 0; background: transparent; }.remove img { width: 24px; height: 24px; object-fit: contain; }
+.login { min-height: 100vh; display: grid; place-content: center; justify-items: center; padding: 30px; background: linear-gradient(180deg, #fff 20%, #eae4f8 60%, #aaa0cf); }.brand-lockup { text-align: center; }.brand-lockup > img { display: block; width: min(430px, 82vw); margin: 0 auto; }.brand-lockup p { margin: 28px 0 50px; color: #302b39; font: 1.15rem 'Baloo 2', sans-serif; }.google-button { display: flex; align-items: center; justify-content: center; gap: 22px; width: min(480px, 90vw); padding: 17px; border: 0; border-bottom: 4px solid #9185b3; border-radius: 999px; background: #fff; font-size: 1.35rem; font-weight: 700; }.google-button img { width: 25px; height: 25px; }.login-error { max-width: 480px; color: #8e3333; text-align: center; }
+.public-note { margin: 0 26px 28px; color: var(--muted); }
+input[type='file'] { padding: 9px; background: #fff; }
+@media (max-width: 700px) { .topbar { height: 70px; padding: 0 18px; }.logo { width: 135px; }.logo img { width: 130px; }.topbar nav { position: fixed; z-index: 5; right: 0; bottom: 0; left: 0; justify-content: space-around; gap: 0; margin: 0; padding: 7px; background: #fff; border-top: 1px solid #d4cedb; }.topbar nav a { padding: 8px 18px; font-size: .95rem; }.topbar nav a img { width: 22px; height: 22px; }.signout { padding: 6px 14px; font-size: .9rem; }.page { padding: 28px 18px 90px; }.intro h1, .pet-hero h1 { font-size: 2.55rem; }.pet-grid, .post-grid, .diary-layout { grid-template-columns: 1fr; gap: 20px; }.pet-card img, .post-card img { height: 240px; }.surface { padding: 22px 18px; border-radius: 20px; }.form-grid, .rehome-form .form-grid { grid-template-columns: 1fr; }.add-pet .primary { width: 100%; }.pet-hero { grid-template-columns: 100px 1fr; gap: 16px; padding: 15px; }.pet-hero img { width: 100px; height: 100px; }.hero-actions { grid-column: 1 / -1; justify-content: stretch; }.hero-actions .outline { flex: 1; }.hero-actions .primary { margin-top: 4px; }.tabs { width: 100%; margin: 18px 0; }.tabs button { flex: 1; min-width: 0; }.diary-layout { gap: 24px; }.memory { padding: 14px; gap: 12px; }.memory img { width: 92px; height: 85px; }.rehome-form { margin: 0 0 28px; }.brand-lockup > img { width: min(340px, 86vw); }.brand-lockup p { margin: 24px 0 35px; }.google-button { font-size: 1.1rem; } }
