@@ -2,9 +2,9 @@
 
 A private digital pet diary for recording the moments, care, and next chapters that make a pet's story special.
 
-**Repository:** 
+**Repository:** https://github.com/ryukarien/tailTALES
 
-**Live site:** 
+**Live site:** https://ryukarien.github.io/tailTALES/
 
 **Demo video:** Add the final video link here
 
