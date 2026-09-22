@@ -96,7 +96,21 @@ export default function App() {
   const [user, setUser] = useState(undefined); const [loginError, setLoginError] = useState(''); const [path, setPath] = useState(window.location.pathname); const [data, setData] = useStore(); const [breeds, setBreeds] = useState([])
   useEffect(() => onAuthStateChanged(auth, setUser), [])
   useEffect(() => { listDogBreeds().then(setBreeds).catch(() => setBreeds(['golden retriever', 'beagle', 'pomeranian', 'labrador'])); const update = () => setPath(window.location.pathname); window.addEventListener('popstate', update); return () => window.removeEventListener('popstate', update) }, [])
-  async function login() { try { setLoginError(''); await signInWithPopup(auth, googleProvider) } catch (error) { setLoginError(error.message.includes('api-key') ? 'Add your Firebase VITE_ values to client/.env.local to enable Google sign-in.' : 'Google sign-in was cancelled or unavailable.') } }
+  async function login() {
+    try {
+      setLoginError('')
+      await signInWithPopup(auth, googleProvider)
+    } catch (error) {
+      const messages = {
+        'auth/unauthorized-domain': 'Firebase is blocking this website. Add ryukarien.github.io in Firebase Console > Authentication > Settings > Authorized domains.',
+        'auth/operation-not-allowed': 'Google sign-in is not enabled. Enable Google under Firebase Console > Authentication > Sign-in method.',
+        'auth/popup-blocked': 'The Google sign-in popup was blocked. Allow popups for this site and try again.',
+        'auth/popup-closed-by-user': 'The Google sign-in window was closed before it finished.',
+        'auth/api-key-not-valid': 'The Firebase API key is invalid. Check the Firebase configuration in client/src/firebase.js.',
+      }
+      setLoginError(messages[error.code] || `Google sign-in failed (${error.code || 'unknown error'}). Check the browser console for details.`)
+    }
+  }
   if (user === undefined) return <div className="loading">Loading tailTALES...</div>
   if (!user && path !== '/rehoming') return <Login onLogin={login} error={loginError} />
   const petId = path.match(/^\/pets\/(.+)$/)?.[1]; const pet = data.pets.find((item) => item.id === petId)
