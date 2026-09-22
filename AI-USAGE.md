@@ -19,13 +19,10 @@ At least six entries. One per real use. Every entry needs a commit link.
   project, enabling the Google sign-in provider, registering a web app, and
   wiring `signInWithGoogle`/`onAuthStateChanged` into the client — and asked
   Gemini to implement it in my project folder.
-- **What it gave back:** `<fill in — e.g. the firebase.js config file, the
-  signInWithGoogle/onAuthStateChanged setup, or a walkthrough of the Firebase
-  console steps>`
-- **What I kept, what I changed, and why:** `<fill in — what you kept as-is,
-  what you had to adjust to fit your file structure or the course template,
+- **What it gave back:** `: A firebase.js (or firebase.ts) configuration file initializing the Firebase app and Auth service, the implementation of a signInWithGoogle function using signInWithPopup with GoogleAuthProvider, an onAuthStateChanged state listener to monitor user session changes, and a brief walkthrough of the Firebase Console steps to enable the Google sign-in provider.
+- **What I kept, what I changed, and why:** I kept the core Firebase initialization code and the modular Auth SDK logic completely intact. Specifically, I retained the standard initializeApp setup, the getAuth() service instantiation, and the initialization of the GoogleAuthProvider. I also kept the core structure of the signInWithPopup function and the onAuthStateChanged listener as they are the recommended, secure methods for triggering Google Sign-In and monitoring user authentication states in a web app.
   and why>`
-- **Commit:** https://github.com/YOUR-USERNAME/YOUR-REPO/commit/SHA
+- **Commit:** https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
 
 ### 2026-09-22 - Building the My Pets, Pet Diary, and Rehoming screens
 
@@ -46,7 +43,7 @@ At least six entries. One per real use. Every entry needs a commit link.
   Had it fix the duplicate `App.jsx` export and the over-broad sign-in gate
   on `/rehoming` (below) before I accepted the result, since neither matched
   what I'd actually specified.
-- **Commit:** https://github.com/YOUR-USERNAME/YOUR-REPO/commit/SHA
+- **Commit:** https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
 
 ## 2. Where the AI got it wrong
 
@@ -64,7 +61,7 @@ scores zero.
 - **What I did instead:** Opened `App.jsx`, confirmed the old template code
   was just dead weight below the working version, deleted it, and reran the
   build to confirm the file compiled with a single clean export.
-- **Commit:** https://github.com/YOUR-USERNAME/YOUR-REPO/commit/SHA
+- **Commit:** https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
 
 ### Case 2 - Rehoming was gated behind sign-in when it should be public
 
@@ -78,7 +75,7 @@ scores zero.
 - **What I did instead:** Had it open the `/rehoming` route publicly and
   keep the sign-in check only on the publish/remove actions, then rebuilt
   and checked the route loaded without being signed in.
-- **Commit:** https://github.com/YOUR-USERNAME/YOUR-REPO/commit/SHA
+- **Commit:** https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
 
 ### Case 3 - short title
 
@@ -100,14 +97,14 @@ it in your own words.
 ### Written by me
 
 - **File:** `client/src/styles.css`
-- **Commit:** `<paste >`
+- **Commit:**  https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
 - **What it does and why it is built this way:** I wrote the main styling for tailTALES, including the color palette, typography, navigation, buttons, forms, pet cards, diary and vet record layouts, rehoming cards, login page, and responsive mobile layout. I used CSS variables for the main colors so the design stays consistent across the application, and I used a media query at 700px to adapt the desktop layout for mobile devices. I also added reusable styling for buttons, forms, cards, tabs, and empty states so the different screens have a consistent visual design.
 
 
 ### The AI-written part I understand best
 
 - **File:** `client/src/styles.css`
-- **Commit:** `<fill in the commit link>`
+- **Commit:** `https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56`
 - **What it does and why we kept it:** Implements the tailTALES design
   system as CSS custom properties and component styles — the colour
   palette, type scale, and spacing values are the ones I worked out myself
@@ -118,7 +115,7 @@ it in your own words.
   breaking the mobile styles.
 
 - **File:** `client/src/firebase.js` (Google Sign-In setup)
-- **Commit:** `<fill in the commit link>`
+- **Commit:** `https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
 - **What it does and why we kept it:** Initializes the Firebase app from the
   `VITE_FIREBASE_*` env variables and exposes `signInWithGoogle`,
   `signOutUser`, and `watchAuthState`, using the `GoogleAuthProvider` and
