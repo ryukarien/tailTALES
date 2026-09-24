@@ -45,6 +45,57 @@ At least six entries. One per real use. Every entry needs a commit link.
   what I'd actually specified.
 - **Commit:** https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
 
+### 2026-09-24 - Hero Edit/Delete, emoji placeholders, upload box, and page Share panel
+
+- **Tool:** GitHub Copilot
+- **What I asked for:** Asked it to make the pet-hero Edit/Delete controls
+  mutate the pet record the same way the pet-card actions already did,
+  stop auto-generating a Dog CEO photo when no image is uploaded, show an
+  emoji placeholder instead, replace the native "Choose file" input with a
+  light-yellow upload box, and expand the single "Share this page" action
+  into separate Copy link / Facebook / Instagram actions.
+- **What it gave back:** It searched `App.jsx` and `mockup.css` for the
+  existing handlers first, wired the hero buttons to the same edit/delete
+  logic as the pet cards, added a dog/cat/other emoji-placeholder branch
+  to the Add Pet flow, restyled the upload control, and added a share
+  panel with the three actions. It ran `npm run build` and a Playwright
+  browser smoke test after each batch of edits, and caught one real
+  runtime bug along the way (see Case 3 below).
+- **What I kept, what I changed, and why:** Kept it reusing the existing
+  edit/delete handlers for the hero buttons instead of writing separate
+  logic, since duplicating that across the hero and the card would've
+  been the kind of drift I'd have had to catch in review anyway. Had it
+  fix the ordering bug in Case 3 before accepting the result.
+- **Commit:** https://github.com/YOUR-USERNAME/YOUR-REPO/commit/SHA
+
+### 2026-09-24 - Postgres backend for pet/diary/rehoming ownership
+
+- **Tool:** Claude (Anthropic)
+- **What I asked for:** Told it I was switching data storage from
+  Firestore/localStorage to Postgres, and that my diary data needed to be
+  private per-owner while rehoming posts stay public — this came out of a
+  real bug where the diary wasn't actually scoped to whoever was signed
+  in. Asked it to design the integration.
+- **What it gave back:** A `schema.sql` with `pets`, `diary_entries`, and
+  `vet_records` tables (diary/vet rows only ever reachable through a
+  `pet_id` foreign key, never directly), an Express server
+  (`index.js`, `db.js`, `authMiddleware.js`) that verifies each request's
+  Firebase ID token with `firebase-admin` before touching the database,
+  `routes/pets.js` and `routes/petRecords.js` where every query's `WHERE`
+  clause checks `owner_uid = req.uid` (so ownership is enforced by
+  Postgres itself, not by hiding buttons in the UI), a public
+  `/api/pets/rehoming` route that never joins the diary/vet tables at
+  all, and a client-side `api/api.js` that attaches the Firebase token to
+  each request.
+- **What I kept, what I changed, and why:** Haven't merged this into
+  `App.jsx` yet — right now it's new, unused files sitting in `server/`
+  and `client/src/api/`. Still need to: add `server/package.json` with
+  the actual dependencies, rewrite `App.jsx` to call `api.js` instead of
+  reading/writing the `localStorage` blob, and test the ownership checks
+  against a real Postgres instance before I can say what I kept vs.
+  changed from what it gave me.
+- **Commit:** https://github.com/YOUR-USERNAME/YOUR-REPO/commit/SHA
+
 ## 2. Where the AI got it wrong
 
 Three cases. Be specific. If you write that the AI was never wrong, this section
@@ -77,11 +128,20 @@ scores zero.
   and checked the route loaded without being signed in.
 - **Commit:** https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
 
-### Case 3 - short title
+### Case 3 - Hero action effect referenced `id` before it was declared
 
-- **What it gave me:**
-- **What was wrong with it:**
-- **What I did instead:**
+- **What it gave me:** Copilot wired the pet-hero Edit/Delete buttons to a
+  new effect that looked up the route `id` to know which pet to mutate, but
+  placed that effect above the line in `App.jsx` that actually computed
+  `id` from the route.
+- **What was wrong with it:** `npm run build` passed clean — Vite's
+  bundler doesn't catch this kind of temporal/ordering reference — so the
+  bug only surfaced when it ran an actual Playwright browser session and
+  clicked Edit, and the hero controls did nothing.
+- **What I did instead:** Had it search the file for where `id` was
+  computed, move the hero-action effect below that line, rebuild, and
+  rerun the same Playwright check to confirm the click actually mutated
+  the pet.
 - **Commit:** https://github.com/YOUR-USERNAME/YOUR-REPO/commit/SHA
 
 ## 3. Who wrote what
@@ -94,14 +154,31 @@ it in your own words.
 
 ### Written by me
 
-### Written by me
-
 - **File:** `client/src/styles.css`
-- **Commit:**  https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
-- **What it does and why it is built this way:** I wrote the main styling for tailTALES, including the color palette, typography, navigation, buttons, forms, pet cards, diary and vet record layouts, rehoming cards, login page, and responsive mobile layout. I used CSS variables for the main colors so the design stays consistent across the application, and I used a media query at 700px to adapt the desktop layout for mobile devices. I also added reusable styling for buttons, forms, cards, tabs, and empty states so the different screens have a consistent visual design.
+- **Commit:** https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
+- **What it does and why it is built this way:** Copilot's first pass at
+  `styles.css` worked but wasn't organized in a way I could navigate —
+  rules for different components and screens were interleaved rather than
+  grouped. I reconstructed the file myself: split it into clear sections
+  (colors/variables, typography, navigation, buttons and forms, pet
+  cards, diary and vet record layouts, rehoming cards, login page, and
+  the 700px mobile breakpoint), and grouped each screen's rules together
+  instead of scattered through the file. I didn't originate the CSS
+  values themselves — those came from `docs/03-design-system.md` and
+  Copilot's implementation of it — but the structure and section
+  boundaries are mine, so the file is actually maintainable.
 
 
 ### The AI-written part I understand best
+
+- **File:** `client/src/firebase.js` (Google Sign-In setup)
+- **Commit:** `https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
+- **What it does and why we kept it:** Initializes the Firebase app from the
+  `VITE_FIREBASE_*` env variables and exposes `signInWithGoogle`,
+  `signOutUser`, and `watchAuthState`, using the `GoogleAuthProvider` and
+  `signInWithPopup` functions. Kept close to what Gemini produced because it
+  matches the standard single-provider sign-in pattern — `<add your own
+  sentence on why you understand and trust this file>`
 
 - **File:** `client/src/styles.css`
 - **Commit:** `https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56`
@@ -114,20 +191,5 @@ it in your own words.
   fix the bug where a stray `+` character in front of `@media` was silently
   breaking the mobile styles.
 
-- **File:** `client/src/firebase.js` (Google Sign-In setup)
-- **Commit:** `https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
-- **What it does and why we kept it:** Initializes the Firebase app from the
-  `VITE_FIREBASE_*` env variables and exposes `signInWithGoogle`,
-  `signOutUser`, and `watchAuthState`, using the `GoogleAuthProvider` and
-  `signInWithPopup` functions. Kept close to what Gemini produced because it
-  matches the standard single-provider sign-in pattern — `<add your own
-  sentence on why you understand and trust this file>`
 
-## Still to fill in
 
-- Four more entries in Section 1 (six total) — log each one the day it
-  happens, with its commit link, not at the end.
-- Case 3 in Section 2 — one more real mistake and what you did about it.
-- A file for "Written by me" in Section 3 — see the note in that section;
-  `styles.css` as it stands was Copilot's work, not yours.
-- Every commit link still marked `<fill in the commit link>` or `SHA`.
