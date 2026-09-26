@@ -54,7 +54,8 @@ Rehoming link from the login page, made shared post URLs locate their post,
 added custom species and breed inputs, added optional photo upload to New
 Memory, and adjusted the mobile header so Sign out stays visible. Rehoming
 posts now load and publish through the existing API when it is configured;
-individual sharing is hidden for device-only preview posts. The client build,
+local preview cards can be shared using a link containing a listing snapshot,
+although they are not added to the public feed. The client build,
 diagnostics, and a browser check of the public route passed.
 
 **Stuck.** Pet, diary, and vet changes are still stored in browser `localStorage`

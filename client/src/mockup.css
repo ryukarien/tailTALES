@@ -25,3 +25,4 @@ main{max-width:1120px;margin:0 auto;padding:40px 24px 96px}.page-title{font-size
 .post{overflow:visible}.post-img{border-radius:24px 24px 0 0}
 @media(max-width:640px){.nav{gap:8px}.nav .brand{flex:0 1 auto;max-width:36vw}.nav .brand img{width:100%;max-width:100%;object-fit:contain}.nav>.btn{min-width:0;padding:7px 10px;min-height:40px;font-size:.82rem;white-space:nowrap}}
 .entry .memory-photo{display:block;width:132px;height:132px;object-fit:cover}
+.share-message{margin:0 0 14px;max-width:100%;overflow-wrap:anywhere;text-align:left}

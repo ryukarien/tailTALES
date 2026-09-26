@@ -18,7 +18,8 @@ A private digital pet diary — profiles, memories, and vet records — with a p
 - Edit and delete pets, diary entries, and vet records
 - Browse public rehoming posts without an account
 - Publish rehoming posts when signed in; posts on the configured API are public
-- Share API-backed rehoming posts via copy link, Facebook, or Instagram
+- Share rehoming posts via Copy link, Facebook, or Instagram. Local preview links
+  include a snapshot of the listing but do not publish it to the shared feed.
 - Choose a breed from the Dog CEO API (dogs) or a second breed API (cats), or type one in under "Other"
 
 ## Built with
@@ -38,7 +39,7 @@ remain local until they are connected to the backend.
 
 | Configuration | What happens | Status |
 | --- | --- | --- |
-| `VITE_API_BASE` unset | Pet, diary, and vet data use browser `localStorage`, separated by Firebase UID. Rehoming uses local preview data if the API is unavailable. | **UI preview only; private data is browser-local and not server-secured.** |
+| `VITE_API_BASE` unset | Pet, diary, and vet data use browser `localStorage`, separated by Firebase UID. Rehoming uses local preview data if the API is unavailable. | **UI preview only; private data is browser-local and not server-secured. Shared card links contain a listing snapshot but do not add it to the public feed.** |
 | `VITE_API_BASE` points to the API | The client fetches and publishes public rehoming posts through Express. Pet, diary, and vet data still use browser storage. | **Partial integration; the API must be deployed and configured.** |
 
 **Demo mode is a starting point and a fallback, not the finished project.** The

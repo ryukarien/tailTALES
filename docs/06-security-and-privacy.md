@@ -106,8 +106,11 @@ browser, but it is not a security boundary: browser data can be inspected or
 changed, and records do not follow the user to another device. The API verifies
 Firebase ID tokens and checks owner UID in database queries, but the client
 does not yet use these private routes. Rehoming posts are public when published
-to the configured API; local preview posts remain on the device and cannot be
-shared as public individual posts.
+to the configured API. A local preview post is not added to the shared feed,
+but its Copy link action creates a URL containing a snapshot of the listing,
+including the contact details entered for rehoming. Anyone with that link can
+read and share the snapshot; do not include contact information you do not want
+to make public.
 
 If your project handles personal information about real people, you are inside
 the Philippine Data Privacy Act. Collect the minimum, say what you collect, and

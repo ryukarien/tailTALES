@@ -62,6 +62,26 @@ function appPath(pathname = window.location.pathname) {
   return path || '/'
 }
 function move(path) { history.pushState({}, '', route(path)); window.dispatchEvent(new PopStateEvent('popstate')) }
+function readSharedPost(value) {
+  if (!value) return null
+  try {
+    const post = JSON.parse(value)
+    if (typeof post?.id !== 'string' || typeof post?.name !== 'string') return null
+    const text = (field, limit) => typeof field === 'string' ? field.slice(0, limit) : ''
+    return {
+      id: text(post.id, 128),
+      name: text(post.name, 120),
+      species: text(post.species, 80),
+      breed: text(post.breed, 120),
+      birthday: text(post.birthday, 32),
+      description: text(post.description, 2000),
+      contact: text(post.contact, 200),
+      photo: text(post.photo, 1000),
+    }
+  } catch {
+    return null
+  }
+}
 
 function Nav({ path, user, onLogin }) {
   return <header className="nav"><a className="brand" href={route('/')} onClick={(event) => { event.preventDefault(); move('/') }}><img src={asset('tailtales_logo.png')} alt="tailTALES" /></a><nav className="tabs" aria-label="Main"><a className={`tab ${path === '/' ? 'on' : ''}`} href={route('/')} onClick={(event) => { event.preventDefault(); move('/') }}><img src={asset('paw_pet.png')} alt="" />My pets</a><a className={`tab ${path === '/rehoming' ? 'on' : ''}`} href={route('/rehoming')} onClick={(event) => { event.preventDefault(); move('/rehoming') }}><img src={asset('rehome_logo.png')} alt="" />Rehoming</a></nav>{user ? <button className="btn outline" onClick={() => signOut(auth)}>Sign out</button> : <button className="btn primary" onClick={onLogin}>Sign in</button>}</header>
@@ -172,10 +192,32 @@ function EnhancedRehoming({ data, setData, user, onLogin }) {
   const [pageOpen, setPageOpen] = useState(false)
   const [postOpen, setPostOpen] = useState('')
   const [message, setMessage] = useState('')
-  const sharedPostId = new URLSearchParams(window.location.search).get('post')
+  const searchParams = new URLSearchParams(window.location.search)
+  const sharedPostId = searchParams.get('post')
+  const sharedPost = readSharedPost(searchParams.get('shared'))
+  const sharedSnapshotId = sharedPost?.id
   const pageUrl = `${window.location.origin}${route('/rehoming')}`
-  const posts = remotePosts ?? data.posts
-  const postUrl = (post) => `${pageUrl}?post=${encodeURIComponent(post.id)}`
+  const boardPosts = remotePosts ?? data.posts
+  const posts = sharedPost ? [sharedPost, ...boardPosts.filter((post) => post.id !== sharedPost.id)] : boardPosts
+  function postUrl(post) {
+    const url = new URL(pageUrl)
+    if (remotePosts?.some((item) => item.id === post.id)) {
+      url.searchParams.set('post', post.id)
+    } else {
+      const snapshot = {
+        id: post.id,
+        name: post.name,
+        species: post.species || '',
+        breed: post.breed || '',
+        birthday: post.birthday || '',
+        description: post.description || '',
+        contact: post.contact || '',
+        photo: post.photo && !post.photo.startsWith('data:') ? post.photo : '',
+      }
+      url.searchParams.set('shared', JSON.stringify(snapshot))
+    }
+    return url.toString()
+  }
 
   useEffect(() => {
     let active = true
@@ -196,11 +238,12 @@ function EnhancedRehoming({ data, setData, user, onLogin }) {
   }, [])
 
   useEffect(() => {
-    if (!sharedPostId || remotePosts === null) return
-    const element = document.getElementById(`rehoming-${sharedPostId}`)
-    if (element) requestAnimationFrame(() => element.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+    const focusId = sharedSnapshotId || sharedPostId
+    if (!focusId || (remotePosts === null && !sharedSnapshotId)) return
+    const element = document.getElementById(`rehoming-${focusId}`)
+    if (element) requestAnimationFrame(() => element.scrollIntoView({ behavior: 'auto', block: 'center' }))
     else setMessage('This rehoming post is no longer available.')
-  }, [remotePosts, sharedPostId])
+  }, [remotePosts, sharedSnapshotId, sharedPostId])
 
   async function copy(value, text) {
     try {
@@ -208,6 +251,7 @@ function EnhancedRehoming({ data, setData, user, onLogin }) {
       setMessage(text)
     } catch {
       window.prompt('Copy this link', value)
+      setMessage('Copy the link from the dialog.')
     }
   }
 
@@ -245,7 +289,7 @@ function EnhancedRehoming({ data, setData, user, onLogin }) {
       const localPost = { ...pet, ...form, id: crypto.randomUUID(), ownerUid: user.uid }
       setData({ ...data, posts: [localPost, ...data.posts] })
       setRemotePosts(null)
-      setMessage('Saved on this device only. Configure the rehoming server to make this post and its link public.')
+      setMessage('Saved on this device. Share the card link to send a snapshot; it will not appear in the public feed.')
     }
     setForm({ petId: '', description: '', contact: '' })
   }
@@ -274,9 +318,9 @@ function EnhancedRehoming({ data, setData, user, onLogin }) {
       <Photo className="post-img" src={post.photo || post.photo_url} species={post.species} />
       <div className="post-body">
         <h3>Hello, I'm {post.name}</h3><p className="small">Born {formatDate(post.birthday)}</p><p className="contact">Contact: {post.contact}</p><p className="desc">{post.description}</p>
-        {remotePosts !== null && <div className="post-share"><button className="btn outline share" onClick={() => setPostOpen(postOpen === post.id ? '' : post.id)}>Share link</button>
+        <div className="post-share"><button className="btn outline share" onClick={() => setPostOpen(postOpen === post.id ? '' : post.id)}>Share link</button>
           {postOpen === post.id && <div className="share-popover"><button onClick={() => copy(postUrl(post), 'Post link copied.')}>Copy link</button><button onClick={() => facebook(postUrl(post))}>Facebook</button><button onClick={() => instagram(postUrl(post))}>Instagram</button></div>}
-        </div>}
+        </div>
       </div>
     </article>)}</div>
   </>
