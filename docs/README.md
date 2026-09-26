@@ -16,5 +16,13 @@ Put images in `assets/`. A screenshot named `assets/screenshot.png` is reference
 by the main README, and a README with an image reads as finished in a way one
 without an image does not.
 
+## Current implementation note (2026-09-26)
+
+The client separates browser-stored pet, diary, and vet records by Firebase
+UID, but those records are not yet backed by the authenticated API and do not
+sync across devices. Public rehoming reads and publishing use the API when
+`VITE_API_BASE` is configured. See the [security and privacy checklist](06-security-and-privacy.md)
+for the current boundary and remaining work.
+
 **Write these as you go.** A weekly report written on the last day is obvious to
 read and worth very little.

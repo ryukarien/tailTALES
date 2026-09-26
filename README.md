@@ -3,7 +3,7 @@
 A private digital pet diary — profiles, memories, and vet records — with a public board for rehoming a pet when the time comes.
 
 **Live site:** https://ryukarien.github.io/tailTALES/
-**API:** not deployed yet — see [Demo mode](#demo-mode)
+**API:** not deployed yet — see [Deploying the API](#deploying-the-api)
 **Demo video:** Add the final video link here
 
 
@@ -12,39 +12,39 @@ A private digital pet diary — profiles, memories, and vet records — with a p
 
 - Sign in securely with Google through Firebase Authentication
 - Create pet profiles with a name, breed, birthday, and photo (or an emoji placeholder when no photo is uploaded)
-- Browse a private My Pets dashboard — visible only to the signed-in owner
+- Browse My Pets and records from the signed-in account's browser-local store
 - Keep a diary of memories with photos, captions, and dates
 - Record vaccines and other vet notes
 - Edit and delete pets, diary entries, and vet records
 - Browse public rehoming posts without an account
-- Publish, edit, and remove rehoming posts when signed in — only the original owner can remove their own post
-- Share a rehoming post via copy link, Facebook, or Instagram
+- Publish rehoming posts when signed in; posts on the configured API are public
+- Share API-backed rehoming posts via copy link, Facebook, or Instagram
 - Choose a breed from the Dog CEO API (dogs) or a second breed API (cats), or type one in under "Other"
 
 ## Built with
 
 React and Vite on the front end. Firebase Authentication (Google sign-in) for
-identity. The backend is Express and PostgreSQL — written, but not yet wired up
-to the client or deployed (see [Demo mode](#demo-mode)). The client deploys to
-GitHub Pages; the API and database are meant for a host that can run Node (see
-the table below).
+identity. The Express/PostgreSQL backend contains owner-scoped pet and record
+routes. The client uses it for public rehoming reads and publishing when
+`VITE_API_BASE` is configured, but private pet, diary, and vet operations still
+use browser storage. The client deploys to GitHub Pages; the API and database
+need a host that can run Node (see the table below).
 
 ## Demo mode
 
-This repository is meant to run two ways, chosen by one environment variable at
-**build** time — but right now only one of those two ways actually works end to
-end.
+The client can run as a local demo without a server. Configure `VITE_API_BASE`
+to use the API for public rehoming posts; private pet and record operations
+remain local until they are connected to the backend.
 
-| `VITE_USE_MOCK_API` | What happens | Status |
+| Configuration | What happens | Status |
 | --- | --- | --- |
-| unset, or `true` | The client reads and writes its own `localStorage`. No server, no database, nothing shared between visitors or devices. | **This is what's live today.** |
-| `false` | The client calls the Express API in `server/`, which reads and writes real PostgreSQL, scoped per-owner by Firebase UID. | **Server code exists (`server/`, `client/src/api/api.js`) but `App.jsx` still reads/writes `localStorage` directly — the switch hasn't been made, and the toggle itself isn't implemented yet.** |
+| `VITE_API_BASE` unset | Pet, diary, and vet data use browser `localStorage`, separated by Firebase UID. Rehoming uses local preview data if the API is unavailable. | **UI preview only; private data is browser-local and not server-secured.** |
+| `VITE_API_BASE` points to the API | The client fetches and publishes public rehoming posts through Express. Pet, diary, and vet data still use browser storage. | **Partial integration; the API must be deployed and configured.** |
 
 **Demo mode is a starting point and a fallback, not the finished project.** The
-plan is all three pieces — client, API, database — deployed and talking to each
-other, with data scoped so a pet's diary is visible only to its owner and only
-rehoming posts are public. Demo mode is there so the interface has something to
-show while that's still in progress.
+remaining goal is to connect private pet and record operations to the API so
+they are server-authorized and available across devices, while keeping only
+deliberately published rehoming posts public.
 
 GitHub Pages serves static files and cannot run Node, so the API and database
 can never live there. Once the switch happens, they go somewhere else:
@@ -60,9 +60,11 @@ The app follows the proposal and wireframes in the `docs/` folder:
 
 - **My Pets** (`/`): pet cards and the Add a pet form — private to the signed-in owner
 - **Pet Diary** (`/pets/:id`): diary memories and vet records for one pet
-- **Rehoming** (`/rehoming`): public rehoming posts, with publish/edit/remove controls for signed-in owners
+- **Rehoming** (`/rehoming`): public posts, with publishing for signed-in owners
 
-The layout adapts at a 700px breakpoint. Desktop uses a top navigation bar; mobile moves navigation to the bottom of the screen.
+The layout adapts for mobile screens. Desktop uses a top navigation bar; mobile
+moves the main navigation to the bottom while keeping account actions in the
+header.
 
 ## Running it yourself
 
@@ -76,7 +78,8 @@ npm run dev          # http://localhost:5173
 
 Create a production build with `npm run build` from `client/`. The build produces both `dist/index.html` and `dist/404.html`; the second file lets GitHub Pages serve the React app when a visitor refreshes a nested route like `/pets/pet-1`.
 
-**The whole stack, once the client is switched over to the API.** Needs a PostgreSQL, local or hosted:
+**Run the API-backed rehoming flow locally.** The private pet and record flows
+remain browser-local. This setup needs PostgreSQL, local or hosted:
 
 ```bash
 # 1. the database
@@ -86,20 +89,21 @@ psql postgresql://postgres:devpassword@localhost:5432/tailtales -f server/schema
 
 # 2. the API
 cd server
-npm install                 # needs a package.json — not yet added, see Known Limitations
-cp .env.example .env        # DATABASE_URL, FIREBASE_SERVICE_ACCOUNT
+npm install
+cp .env.example .env        # set DATABASE_URL and Firebase service account
 npm run dev                 # http://localhost:4000
 
 # 3. the client, in another terminal
 cd client
 npm install
-# set VITE_API_BASE=http://localhost:4000 and switch App.jsx to use client/src/api/api.js
+# client/.env.local: VITE_API_BASE=http://localhost:4000
 npm run dev
 ```
 
 ## Environment variables
 
-None of these are committed.
+Secret values are not committed. `server/.env.example` contains variable names
+and placeholders only; copy it to `server/.env` for local development.
 
 | Name | Where | What it is |
 | --- | --- | --- |
@@ -108,7 +112,7 @@ None of these are committed.
 | `CLIENT_ORIGIN` | server | the client's origin, for CORS |
 | `PORT` | server | set by the host, do not set it yourself |
 | `VITE_FIREBASE_*` | client, at build time | Firebase web config — public by design, see Firebase Setup below |
-| `VITE_API_BASE` | client, at build time | the API's public URL, no trailing slash (not yet consumed by `App.jsx`) |
+| `VITE_API_BASE` | client, at build time | API's public URL, no trailing slash; used for public rehoming reads and publishing |
 
 Every `VITE_` value is compiled into the built JavaScript and is **public**. Never put a database password or service-account key in one.
 
@@ -123,11 +127,44 @@ In the Firebase console: open **Authentication**, enable the **Google** provider
 **Client, to GitHub Pages.** Already wired up in `.github/workflows/deploy-pages.yml`.
 
 1. **Settings > Pages > Build and deployment > Source: GitHub Actions.**
-2. Nothing else, until the API is live — demo mode is the default, so the deploy works on its own today. Once the client is switched to call the API, add `VITE_API_BASE` under **Settings > Secrets and variables > Actions > Variables** and re-run the workflow.
+2. Add `VITE_API_BASE` under **Settings > Secrets and variables > Actions > Variables** when the API is deployed, then re-run the workflow to enable server-backed rehoming posts.
 
 The repository must be **public** for Pages to serve it on a free account.
 
-**API and database.** Not deployed yet. Point a host at the `server/` folder, set `DATABASE_URL` and `FIREBASE_SERVICE_ACCOUNT` in its dashboard, and run `server/schema.sql` once against the hosted database.
+### Deploying the API
+
+The API can run on Render with PostgreSQL hosted on Neon. These steps deploy
+the current API, which serves the public rehoming flow; private pet and diary
+operations still use browser storage.
+
+1. Create a PostgreSQL database on Neon. In its SQL Editor, run the contents
+  of `server/schema.sql`.
+2. Create a Render **Web Service** connected to this GitHub repository. Set
+  **Root Directory** to `server`, **Build Command** to `npm ci`, and
+  **Start Command** to `npm start`. The service health-check path can be
+  `/health`.
+3. Add these environment variables in Render. Get `DATABASE_URL` from Neon;
+  generate `FIREBASE_SERVICE_ACCOUNT` in Firebase Console > Project settings >
+  Service accounts. Paste the service-account JSON into Render as a secret;
+  never commit it or add it to a `VITE_` variable.
+
+  | Variable | Value |
+  | --- | --- |
+  | `DATABASE_URL` | Neon connection string |
+  | `FIREBASE_SERVICE_ACCOUNT` | Firebase service-account JSON |
+  | `CLIENT_ORIGIN` | `https://ryukarien.github.io` |
+
+4. Deploy the Render service and confirm its `/health` URL returns `{"status":"ok"}`.
+5. In GitHub repository **Settings > Secrets and variables > Actions >
+  Variables**, add `VITE_API_BASE` with the Render service origin, without a
+  trailing slash (for example, `https://tailtales-api.onrender.com`). Re-run
+  the **Deploy client to GitHub Pages** workflow.
+6. Replace the API status at the top of this README with the deployed API URL.
+
+The API refuses to start in production if `CLIENT_ORIGIN` is missing. `PORT`
+is supplied by Render; do not add it manually. For local development, copy
+`server/.env.example` to `server/.env` and set the database and Firebase
+credentials. Keep `.env` private.
 
 ## Project structure
 
@@ -135,10 +172,10 @@ The repository must be **public** for Pages to serve it on a free account.
 client/
   index.html                 Main browser entry point
   public/assets/              Logo and navigation artwork
-  src/App.jsx                 Routes, screens, auth state — currently reads/writes localStorage
+  src/App.jsx                 Routes, screens, auth state, UID-scoped local pet/record data
   src/firebase.js              Firebase Google Authentication setup
   src/api/dogApi.js            Dog CEO breed integration
-  src/api/api.js                New Postgres API client — not yet used by App.jsx
+  src/api/api.js                API client; currently used for public rehoming reads/publishing
   src/styles.css                Visual system and responsive layout
 server/
   schema.sql                    pets, diary_entries, vet_records tables
@@ -159,14 +196,17 @@ docs/
 
 ## Architecture
 
-Today: the Vite client is the whole deployed app. Firebase Authentication proves who's signed in, but all pet/diary/vet/rehoming data lives in browser `localStorage`, so nothing is actually shared between users or devices yet.
+Today: the Vite client uses Firebase Authentication and stores pet, diary, and vet data in browser `localStorage` under a Firebase-UID-specific key. This keeps accounts separate in the app on one browser, but data is not server-enforced or synced to another device. Rehoming reads and publishing use the Express API when configured; otherwise the board falls back to local preview data.
 
-Planned: the client calls an Express API (`server/`), which verifies each request's Firebase ID token and reads/writes PostgreSQL. Ownership is enforced in the database query itself — every pet row carries the owner's Firebase UID, and diary/vet routes check that UID before touching a pet's records — not just by hiding buttons in the UI. Only pets marked `is_rehoming` are ever returned by the public rehoming endpoint, and that endpoint never joins the diary or vet tables.
+Remaining: connect the private pet, diary, and vet flows to the Express API
+(`server/`). It verifies Firebase ID tokens and enforces owner UID in database
+queries. Only pets marked `is_rehoming` are returned by the public rehoming
+endpoint, which never joins the diary or vet tables.
 
 ## Known limitations
 
-- The live demo is browser-local: data isn't shared between devices or users, and two people signed in on the same browser would see each other's "private" pets — this is the main reason the Postgres backend exists.
-- The Postgres API in `server/` isn't deployed, doesn't have a `package.json` yet, and `App.jsx` hasn't been switched to call it — so the ownership and privacy fixes it implements aren't live yet.
+- Pet, diary, and vet data remains browser-local and does not sync between devices. UID-specific keys prevent another account from seeing the records in the app UI on the same browser, but this is not a substitute for server-side authorization.
+- The Postgres API in `server/` is not deployed yet. The client uses its public rehoming routes when configured, but has not switched private pet and record operations to the API.
 - Photos are stored as browser image data, not uploaded to permanent storage.
 - Instagram sharing has no true prefilled web-share API; it falls back to a mobile share-intent or copy image + caption on desktop.
 

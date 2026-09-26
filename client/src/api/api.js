@@ -1,6 +1,6 @@
 import { auth } from '../firebase'
 
-const API_BASE = import.meta.env.VITE_API_BASE // e.g. https://tailtales-api.onrender.com
+const API_BASE = import.meta.env.VITE_API_BASE || '' // e.g. https://tailtales-api.onrender.com
 
 async function authFetch(path, options = {}) {
   const token = await auth.currentUser?.getIdToken()
@@ -22,6 +22,20 @@ export const addPet = (pet) => authFetch('/api/pets', { method: 'POST', body: JS
 export const updatePet = (id, pet) => authFetch(`/api/pets/${id}`, { method: 'PUT', body: JSON.stringify(pet) })
 export const deletePet = (id) => authFetch(`/api/pets/${id}`, { method: 'DELETE' })
 export const setRehoming = (id, payload) => authFetch(`/api/pets/${id}/rehoming`, { method: 'PATCH', body: JSON.stringify(payload) })
+export async function publishRehomingPet(pet, details) {
+  const createdPet = await addPet({
+    name: pet.name,
+    breed: pet.breed,
+    birthday: pet.birthday,
+    photoUrl: pet.photo,
+  })
+  await setRehoming(createdPet.id, {
+    isRehoming: true,
+    description: details.description,
+    contact: details.contact,
+  })
+  return fetchRehomingPets()
+}
 
 // Diary & vet records — always nested under a pet, ownership checked server-side
 export const fetchDiary = (petId) => authFetch(`/api/pets/${petId}/diary`)

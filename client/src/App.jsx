@@ -3,19 +3,15 @@ import { onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut } from
 import { auth, googleProvider } from './firebase'
 import { listDogBreeds, randomDogImage } from './api/dogApi'
 import { FALLBACK_CAT_BREEDS, listCatBreeds } from './api/catApi'
+import { fetchRehomingPets, publishRehomingPet } from './api/api'
 
 const STORAGE_KEY = 'tailtales-v2'
+const PUBLIC_POSTS_KEY = 'tailtales-public-rehoming-v1'
 const fallbackDogs = ['Aspin (Asong Pinoy)', 'Shih Tzu', 'Labrador Retriever', 'Golden Retriever', 'Pomeranian', 'Poodle', 'Pug', 'Beagle', 'Siberian Husky']
 const seed = {
-  pets: [
-    { id: 'p1', name: 'Unnie', species: 'Dogs', breed: 'Aspin (Asong Pinoy)', birthday: '2015-11-27', photo: '' },
-    { id: 'p2', name: 'Effy', species: 'Cats', breed: 'Puspin (Pusang Pinoy)', birthday: '2022-12-19', photo: '' },
-    { id: 'p3', name: 'Jami', species: 'Cats', breed: 'Puspin (Pusang Pinoy)', birthday: '2022-12-08', photo: '' },
-  ],
-  diary: {
-    p2: [{ id: 'd1', title: 'Hungry Peppy', date: '2026-06-21', story: 'My cat really thinks all-you-can-eat is a lifestyle. One second she is eating, the next she is asking what is for dinner.', photo: '' }, { id: 'd2', title: 'Sweet Girls', date: '2026-05-14', story: 'Caught Effy hugging her sister Jami again. They are always fighting, but look at them now.', photo: '' }],
-  },
-  vet: { p2: [{ id: 'v1', title: '5-in-1', date: '2026-05-14', notes: 'No reaction.' }, { id: 'v2', title: 'Annual checkup', date: '2026-05-14', notes: 'Healthy, weight 4.2 kg.' }] },
+  pets: [],
+  diary: {},
+  vet: {},
   posts: [
     { id: 'r1', name: 'Bidi', birthday: '2024-03-24', tone: 'lilac', contact: '099XXXX', description: 'If you give me some time and patience, my shyness will turn into cuddles soon.', photo: '' },
     { id: 'r2', name: 'Choki', birthday: '2024-03-24', tone: 'yellow', contact: '099XXXX', description: 'If you give me some time and patience, my shyness will turn into cuddles soon.', photo: '' },
@@ -23,10 +19,34 @@ const seed = {
   ],
 }
 
-function useStore() {
-  const [data, setData] = useState(() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || seed } catch { return seed } })
-  useEffect(() => localStorage.setItem(STORAGE_KEY, JSON.stringify(data)), [data])
-  return [data, setData]
+function readStore(ownerUid) {
+  let privateData = {}
+  let posts = seed.posts
+  try {
+    if (ownerUid) privateData = JSON.parse(localStorage.getItem(`${STORAGE_KEY}:${ownerUid}`)) || {}
+    posts = JSON.parse(localStorage.getItem(PUBLIC_POSTS_KEY)) || seed.posts
+  } catch { /* Use empty private data and the public preview posts. */ }
+  return { ...seed, ...privateData, posts }
+}
+
+function useStore(ownerUid) {
+  const [store, setStore] = useState(() => ({ ownerUid, data: readStore(ownerUid) }))
+  useEffect(() => setStore({ ownerUid, data: readStore(ownerUid) }), [ownerUid])
+  const active = store.ownerUid === ownerUid
+  const data = active ? store.data : { ...seed, pets: [], diary: {}, vet: {}, posts: readStore(ownerUid).posts }
+  useEffect(() => {
+    if (!active || !ownerUid) return
+    const { pets, diary, vet } = data
+    localStorage.setItem(`${STORAGE_KEY}:${ownerUid}`, JSON.stringify({ pets, diary, vet }))
+    localStorage.setItem(PUBLIC_POSTS_KEY, JSON.stringify(data.posts))
+  }, [active, data, ownerUid])
+  function updateData(nextData) {
+    if (!active) return
+    setStore((current) => current.ownerUid === ownerUid
+      ? { ...current, data: typeof nextData === 'function' ? nextData(current.data) : nextData }
+      : current)
+  }
+  return [data, updateData]
 }
 
 function formatDate(value) { return value ? new Date(`${value}T12:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '' }
@@ -48,16 +68,16 @@ function Nav({ path, user, onLogin }) {
 }
 
 function Login({ onLogin, error }) {
-  return <main className="login"><div className="login-in"><img className="login-logo" src={asset('tailtales_logo.png')} alt="tailTALES" /><p className="tagline">Your pet's memories, care, and stories in one place.</p><div className="login-btns"><button className="gbtn" onClick={onLogin}><img src={asset('google_logo.png')} alt="" />Sign in with Google</button><a className="vbtn" href={route('/rehoming')}>View rehoming pets</a></div>{error && <p className="login-error">{error}</p>}<p className="login-note">Preview mode. Your pets are saved in this browser only.</p></div></main>
+  return <main className="login"><div className="login-in"><img className="login-logo" src={asset('tailtales_logo.png')} alt="tailTALES" /><p className="tagline">Your pet's memories, care, and stories in one place.</p><div className="login-btns"><button className="gbtn" onClick={onLogin}><img src={asset('google_logo.png')} alt="" />Sign in with Google</button><a className="vbtn" href={route('/rehoming')} onClick={(event) => { event.preventDefault(); move('/rehoming') }}>View rehoming pets</a></div>{error && <p className="login-error">{error}</p>}<p className="login-note">Your private pet diary is only visible to you.</p></div></main>
 }
 
 function AddPet({ breeds, onAdd }) {
-  const [open, setOpen] = useState(false); const [form, setForm] = useState({ name: '', species: 'Dogs', breed: '', customBreed: '', birthday: '', photo: '' })
+  const [open, setOpen] = useState(false); const [form, setForm] = useState({ name: '', species: 'Dogs', customSpecies: '', breed: '', customBreed: '', birthday: '', photo: '' })
   const update = (key, value) => setForm({ ...form, [key]: value })
   async function photo(event) { const file = event.target.files?.[0]; if (file) update('photo', await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file) })) }
-  async function submit(event) { event.preventDefault(); const breed = form.breed === '__other__' ? form.customBreed.trim() : form.breed; if (!form.name || !breed) return; onAdd({ id: crypto.randomUUID(), name: form.name, species: form.species, breed, birthday: form.birthday, photo: form.photo }); setOpen(false); setForm({ name: '', species: 'Dogs', breed: '', customBreed: '', birthday: '', photo: '' }) }
+  async function submit(event) { event.preventDefault(); const species = form.species === 'Other' ? form.customSpecies.trim() : form.species; const breed = form.species === 'Other' || form.breed === '__other__' ? form.customBreed.trim() : form.breed; if (!form.name || !species || !breed) return; onAdd({ id: crypto.randomUUID(), name: form.name, species, breed, birthday: form.birthday, photo: form.photo }); setOpen(false); setForm({ name: '', species: 'Dogs', customSpecies: '', breed: '', customBreed: '', birthday: '', photo: '' }) }
   if (!open) return <button className="pet add" onClick={() => setOpen(true)}><span className="add-icon">+</span><span>Add a pet</span></button>
-  return <div className="edit-overlay" role="dialog" aria-modal="true"><form className="card form add-form" onSubmit={submit}><h2>Add a pet</h2><label className="field"><span>Name</span><input value={form.name} onChange={(event) => update('name', event.target.value)} required /></label><label className="field"><span>Species</span><select value={form.species} onChange={(event) => setForm({ ...form, species: event.target.value, breed: '' })}><option>Dogs</option><option>Cats</option><option>Other</option></select></label><label className="field"><span>Breed</span><select value={form.breed} onChange={(event) => update('breed', event.target.value)} required><option value="">Choose a breed</option>{(breeds[form.species] || []).map((breed) => <option key={breed}>{breed}</option>)}<option value="__other__">Other</option></select>{form.breed === '__other__' && <input placeholder="Type a breed" value={form.customBreed} onChange={(event) => update('customBreed', event.target.value)} required />}</label><label className="field"><span>Birthday</span><input type="date" value={form.birthday} onChange={(event) => update('birthday', event.target.value)} /></label><UploadBox value={form.photo} onChange={photo} /><div className="row"><button className="btn primary">Save pet</button><button type="button" className="btn outline" onClick={() => setOpen(false)}>Cancel</button></div></form></div>
+  return <div className="edit-overlay" role="dialog" aria-modal="true"><form className="card form add-form" onSubmit={submit}><h2>Add a pet</h2><label className="field"><span>Name</span><input value={form.name} onChange={(event) => update('name', event.target.value)} required /></label><label className="field"><span>Species</span><select value={form.species} onChange={(event) => setForm({ ...form, species: event.target.value, customSpecies: '', breed: '', customBreed: '' })}><option>Dogs</option><option>Cats</option><option>Other</option></select>{form.species === 'Other' && <input placeholder="Type a species" value={form.customSpecies} onChange={(event) => update('customSpecies', event.target.value)} required />}</label><label className="field"><span>Breed</span>{form.species === 'Other' ? <input placeholder="Type a breed" value={form.customBreed} onChange={(event) => update('customBreed', event.target.value)} required /> : <><select value={form.breed} onChange={(event) => update('breed', event.target.value)} required><option value="">Choose a breed</option>{(breeds[form.species] || []).map((breed) => <option key={breed}>{breed}</option>)}<option value="__other__">Other</option></select>{form.breed === '__other__' && <input placeholder="Type a breed" value={form.customBreed} onChange={(event) => update('customBreed', event.target.value)} required />}</>}</label><label className="field"><span>Birthday</span><input type="date" value={form.birthday} onChange={(event) => update('birthday', event.target.value)} /></label><UploadBox value={form.photo} onChange={photo} /><div className="row"><button className="btn primary">Save pet</button><button type="button" className="btn outline" onClick={() => setOpen(false)}>Cancel</button></div></form></div>
 }
 
 function PetCard({ pet, index, openPet, onEdit, onDelete }) {
@@ -135,7 +155,7 @@ function WorkingDiary({ data, setData, pet, tab, setTab, goRehome }) {
   return <><a className="back" href="/" onClick={(event) => { event.preventDefault(); move('/') }}>← All pets</a><section className="hero"><Photo className="avatar sticker" src={pet.photo} species={pet.species} /><div><h1>{pet.name}</h1><p className="breed">{pet.breed}</p><p className="meta">Born {formatDate(pet.birthday)}</p></div><div className="hero-actions"><button type="button" className="btn yellow" onClick={goRehome}>Rehome this pet</button></div></section><div className="seg"><button type="button" className={tab === 'diary' ? 'on' : ''} onClick={() => setTab('diary')}>Diary <small>{data.diary[pet.id]?.length || 0}</small></button><button type="button" className={tab === 'vet' ? 'on' : ''} onClick={() => setTab('vet')}>Vet records <small>{data.vet[pet.id]?.length || 0}</small></button></div><div className="list">{entries.map((entry) => editing === entry.id ? <form className="card entry-edit-form" key={entry.id} onSubmit={save}><h2>Edit {tab === 'diary' ? 'memory' : 'record'}</h2><label className="field"><span>Title</span><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></label><label className="field"><span>Date</span><input type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} required /></label><label className="field"><span>{tab === 'diary' ? 'Story' : 'Notes'}</span><textarea value={tab === 'diary' ? form.story : form.notes} onChange={(event) => setForm({ ...form, [tab === 'diary' ? 'story' : 'notes']: event.target.value })} /></label><div className="row"><button className="btn primary">Save changes</button><button type="button" className="btn outline" onClick={() => setEditing(null)}>Cancel</button></div></form> : tab === 'diary' ? <article className="entry" key={entry.id}><div><h3>{entry.title}</h3><span className="chip">{formatDate(entry.date)}</span><p className="story">{entry.story}</p></div><div className="entry-actions"><button type="button" className="mini-action" onClick={() => edit(entry)}>Edit</button><button type="button" className="mini-action danger-text" onClick={() => remove(entry.id)}>Delete</button></div></article> : <article className="rec" key={entry.id}><div className="ico">✚</div><div><h3>{entry.title}</h3><span className="chip">{formatDate(entry.date)}</span><p className="story">{entry.notes}</p></div><div className="entry-actions"><button type="button" className="mini-action" onClick={() => edit(entry)}>Edit</button><button type="button" className="mini-action danger-text" onClick={() => remove(entry.id)}>Delete</button></div></article>)}</div></>
 }
 
-function EnhancedRehoming({ data, setData, user, onLogin }) {
+function LegacyEnhancedRehoming({ data, setData, user, onLogin }) {
   const [form, setForm] = useState(() => ({ petId: new URLSearchParams(window.location.search).get('pet') || '', description: '', contact: '' })); const [pageOpen, setPageOpen] = useState(false); const [postOpen, setPostOpen] = useState(''); const [message, setMessage] = useState('')
   const pageUrl = `${window.location.origin}${import.meta.env.BASE_URL}rehoming`
   const postUrl = (post) => `${pageUrl}?post=${encodeURIComponent(post.id)}`
@@ -146,7 +166,123 @@ function EnhancedRehoming({ data, setData, user, onLogin }) {
   return <><div className="page-head"><div><h1 className="page-title">Rehoming</h1><p className="lede">Help a pet find a new family.</p></div><div className="share-area"><button className="btn yellow" onClick={() => setPageOpen(!pageOpen)}>Share this page</button>{pageOpen && <div className="share-popover"><button onClick={() => copy(pageUrl, 'Page link copied.')}>Copy link</button><button onClick={() => facebook(pageUrl)}>Facebook</button><button onClick={() => instagram(pageUrl)}>Instagram</button></div>}</div></div>{message && <p className="share-message" role="status">{message}</p>}<div className="notice"><span>◉</span><p>Contact details in a post are visible to everyone.</p></div>{user ? <form className="card" onSubmit={submit}><h2>Post a pet for rehoming</h2><div className="form-row"><label className="field"><span>Which pet will you rehome?</span><select value={form.petId} onChange={(event) => setForm({ ...form, petId: event.target.value })} required><option value="">Choose a pet</option>{data.pets.map((pet) => <option key={pet.id} value={pet.id}>{pet.name}</option>)}</select></label><label className="field"><span>Description</span><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} required /></label><label className="field"><span>Contact</span><input value={form.contact} onChange={(event) => setForm({ ...form, contact: event.target.value })} required /></label></div><div className="form-foot"><button className="btn primary">Publish post</button></div></form> : <div className="card cta"><div><h2>Have a pet who needs a new home?</h2><p>Sign in with Google to post them here.</p></div><button className="btn primary" onClick={onLogin}>Sign in with Google</button></div>}<div className="grid posts">{data.posts.map((post) => <article className="post" key={post.id}><span className="ribbon">Looking for a home</span><Photo className="post-img" src={post.photo} tone={post.tone} /><div className="post-body"><h3>Hello, I'm {post.name}</h3><p className="small">Born {formatDate(post.birthday)}</p><p className="contact">Contact: {post.contact}</p><p className="desc">{post.description}</p><div className="post-share"><button className="btn outline share" onClick={() => setPostOpen(postOpen === post.id ? '' : post.id)}>Share link</button>{postOpen === post.id && <div className="share-popover"><button onClick={() => copy(postUrl(post), 'Post link copied.')}>Copy link</button><button onClick={() => facebook(postUrl(post))}>Facebook</button><button onClick={() => instagram(postUrl(post))}>Instagram</button></div>}</div></div></article>)}</div></>
 }
 
-function CompleteDiary({ data, setData, pet, tab, setTab, goRehome }) {
+function EnhancedRehoming({ data, setData, user, onLogin }) {
+  const [form, setForm] = useState(() => ({ petId: new URLSearchParams(window.location.search).get('pet') || '', description: '', contact: '' }))
+  const [remotePosts, setRemotePosts] = useState(null)
+  const [pageOpen, setPageOpen] = useState(false)
+  const [postOpen, setPostOpen] = useState('')
+  const [message, setMessage] = useState('')
+  const sharedPostId = new URLSearchParams(window.location.search).get('post')
+  const pageUrl = `${window.location.origin}${route('/rehoming')}`
+  const posts = remotePosts ?? data.posts
+  const postUrl = (post) => `${pageUrl}?post=${encodeURIComponent(post.id)}`
+
+  useEffect(() => {
+    let active = true
+    fetchRehomingPets().then((items) => {
+      if (!active) return
+      setRemotePosts(items.map((post) => ({
+        ...post,
+        petId: post.id,
+        photo: post.photo_url || '',
+        contact: post.rehoming_contact || '',
+        description: post.rehoming_description || '',
+        ownerUid: post.owner_uid,
+      })))
+    }).catch(() => {
+      if (active) setRemotePosts(null)
+    })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    if (!sharedPostId || remotePosts === null) return
+    const element = document.getElementById(`rehoming-${sharedPostId}`)
+    if (element) requestAnimationFrame(() => element.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+    else setMessage('This rehoming post is no longer available.')
+  }, [remotePosts, sharedPostId])
+
+  async function copy(value, text) {
+    try {
+      await navigator.clipboard.writeText(value)
+      setMessage(text)
+    } catch {
+      window.prompt('Copy this link', value)
+    }
+  }
+
+  function facebook(value) {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(value)}`, '_blank', 'noopener,noreferrer')
+  }
+
+  async function instagram(value) {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'tailTALES rehoming', text: 'Pets looking for a new home', url: value })
+        setMessage('Share menu opened.')
+      } catch {
+        setMessage('Share cancelled.')
+      }
+    } else await copy(`Pets looking for a new home\n${value}`, 'Caption and link copied for Instagram.')
+  }
+
+  async function submit(event) {
+    event.preventDefault()
+    const pet = data.pets.find((item) => item.id === form.petId)
+    if (!pet) return
+    try {
+      const publishedPosts = await publishRehomingPet(pet, form)
+      setRemotePosts(publishedPosts.map((post) => ({
+        ...post,
+        petId: post.id,
+        photo: post.photo_url || '',
+        contact: post.rehoming_contact || '',
+        description: post.rehoming_description || '',
+        ownerUid: post.owner_uid,
+      })))
+      setMessage('Your pet is now on the public rehoming board.')
+    } catch {
+      const localPost = { ...pet, ...form, id: crypto.randomUUID(), ownerUid: user.uid }
+      setData({ ...data, posts: [localPost, ...data.posts] })
+      setRemotePosts(null)
+      setMessage('Saved on this device only. Configure the rehoming server to make this post and its link public.')
+    }
+    setForm({ petId: '', description: '', contact: '' })
+  }
+
+  return <>
+    <div className="page-head">
+      <div><h1 className="page-title">Rehoming</h1><p className="lede">Help a pet find a new family.</p></div>
+      <div className="share-area">
+        <button className="btn yellow" onClick={() => setPageOpen(!pageOpen)}>Share this page</button>
+        {pageOpen && <div className="share-popover"><button onClick={() => copy(pageUrl, 'Page link copied.')}>Copy link</button><button onClick={() => facebook(pageUrl)}>Facebook</button><button onClick={() => instagram(pageUrl)}>Instagram</button></div>}
+      </div>
+    </div>
+    {message && <p className="share-message" role="status">{message}</p>}
+    <div className="notice"><span>!</span><p>Contact details in a post are visible to everyone.</p></div>
+    {user ? <form className="card" onSubmit={submit}>
+      <h2>Post a pet for rehoming</h2>
+      <div className="form-row">
+        <label className="field"><span>Which pet will you rehome?</span><select value={form.petId} onChange={(event) => setForm({ ...form, petId: event.target.value })} required><option value="">Choose a pet</option>{data.pets.map((pet) => <option key={pet.id} value={pet.id}>{pet.name}</option>)}</select></label>
+        <label className="field"><span>Description</span><textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} required /></label>
+        <label className="field"><span>Contact</span><input value={form.contact} onChange={(event) => setForm({ ...form, contact: event.target.value })} required /></label>
+      </div>
+      <div className="form-foot"><button className="btn primary">Publish post</button></div>
+    </form> : <div className="card cta"><div><h2>Have a pet who needs a new home?</h2><p>Sign in with Google to post them here.</p></div><button className="btn primary" onClick={onLogin}>Sign in with Google</button></div>}
+    <div className="grid posts">{posts.map((post) => <article className="post" id={`rehoming-${post.id}`} key={post.id}>
+      <span className="ribbon">Looking for a home</span>
+      <Photo className="post-img" src={post.photo || post.photo_url} species={post.species} />
+      <div className="post-body">
+        <h3>Hello, I'm {post.name}</h3><p className="small">Born {formatDate(post.birthday)}</p><p className="contact">Contact: {post.contact}</p><p className="desc">{post.description}</p>
+        {remotePosts !== null && <div className="post-share"><button className="btn outline share" onClick={() => setPostOpen(postOpen === post.id ? '' : post.id)}>Share link</button>
+          {postOpen === post.id && <div className="share-popover"><button onClick={() => copy(postUrl(post), 'Post link copied.')}>Copy link</button><button onClick={() => facebook(postUrl(post))}>Facebook</button><button onClick={() => instagram(postUrl(post))}>Instagram</button></div>}
+        </div>}
+      </div>
+    </article>)}</div>
+  </>
+}
+
+function LegacyCompleteDiary({ data, setData, pet, tab, setTab, goRehome }) {
   const [form, setForm] = useState({ title: '', date: '', story: '', notes: '' }); const [editing, setEditing] = useState(null); const entries = tab === 'diary' ? data.diary[pet.id] || [] : data.vet[pet.id] || []
   const update = (key, value) => setForm({ ...form, [key]: value })
   function add(event) { event.preventDefault(); const id = crypto.randomUUID(); const next = [...entries, { ...form, id }]; setData(tab === 'diary' ? { ...data, diary: { ...data.diary, [pet.id]: next } } : { ...data, vet: { ...data.vet, [pet.id]: next } }); setForm({ title: '', date: '', story: '', notes: '' }) }
@@ -157,6 +293,74 @@ function CompleteDiary({ data, setData, pet, tab, setTab, goRehome }) {
 }
 
 
+function CompleteDiary({ data, setData, pet, tab, setTab, goRehome }) {
+  const emptyForm = { title: '', date: '', story: '', notes: '', photo: '' }
+  const [form, setForm] = useState(emptyForm)
+  const [editing, setEditing] = useState(null)
+  const entries = tab === 'diary' ? data.diary[pet.id] || [] : data.vet[pet.id] || []
+  const update = (key, value) => setForm((current) => ({ ...current, [key]: value }))
+
+  async function selectPhoto(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    const photo = await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+    update('photo', photo)
+  }
+
+  function saveEntries(nextEntries) {
+    setData(tab === 'diary'
+      ? { ...data, diary: { ...data.diary, [pet.id]: nextEntries } }
+      : { ...data, vet: { ...data.vet, [pet.id]: nextEntries } })
+  }
+
+  function add(event) {
+    event.preventDefault()
+    saveEntries([{ ...form, id: crypto.randomUUID() }, ...entries])
+    setForm(emptyForm)
+  }
+
+  function remove(id) {
+    if (!window.confirm('Delete this entry?')) return
+    saveEntries(entries.filter((entry) => entry.id !== id))
+  }
+
+  function saveEdit(event) {
+    event.preventDefault()
+    saveEntries(entries.map((entry) => entry.id === editing ? { ...entry, ...form } : entry))
+    setEditing(null)
+  }
+
+  function startEdit(entry) {
+    setEditing(entry.id)
+    setForm({ ...emptyForm, ...entry, story: entry.story || '', notes: entry.notes || '', photo: entry.photo || '' })
+  }
+
+  return <>
+    <a className="back" href={route('/')} onClick={(event) => { event.preventDefault(); move('/') }}>← All pets</a>
+    <section className="hero"><Photo className="avatar sticker" src={pet.photo} species={pet.species} /><div><h1>{pet.name}</h1><p className="breed">{pet.breed}</p><p className="meta">Born {formatDate(pet.birthday)}</p></div><div className="hero-actions"><button type="button" className="btn yellow" onClick={goRehome}>Rehome this pet</button></div></section>
+    <div className="seg"><button type="button" className={tab === 'diary' ? 'on' : ''} onClick={() => setTab('diary')}>Diary <small>{data.diary[pet.id]?.length || 0}</small></button><button type="button" className={tab === 'vet' ? 'on' : ''} onClick={() => setTab('vet')}>Vet records <small>{data.vet[pet.id]?.length || 0}</small></button></div>
+    <div className="split">
+      <form className="card form" onSubmit={add}>
+        <h2>{tab === 'diary' ? 'New memory' : 'New vet record'}</h2>
+        <label className="field"><span>{tab === 'diary' ? 'Title' : 'Vaccine or visit'}</span><input value={form.title} onChange={(event) => update('title', event.target.value)} required /></label>
+        {tab === 'diary' ? <><label className="field"><span>Story <small>(optional)</small></span><textarea value={form.story} onChange={(event) => update('story', event.target.value)} /></label><UploadBox value={form.photo} onChange={selectPhoto} /></> : <label className="field"><span>Notes <small>(optional)</small></span><textarea value={form.notes} onChange={(event) => update('notes', event.target.value)} /></label>}
+        <label className="field"><span>Date</span><input type="date" value={form.date} onChange={(event) => update('date', event.target.value)} required /></label>
+        <button className="btn primary block">{tab === 'diary' ? 'Add to diary' : 'Add record'}</button>
+      </form>
+      <div className="list">{entries.map((entry) => editing === entry.id
+        ? <form className="card entry-edit-form" key={entry.id} onSubmit={saveEdit}><h2>Edit entry</h2><label className="field"><span>Title</span><input value={form.title} onChange={(event) => update('title', event.target.value)} required /></label><label className="field"><span>Date</span><input type="date" value={form.date} onChange={(event) => update('date', event.target.value)} required /></label><label className="field"><span>{tab === 'diary' ? 'Story' : 'Notes'}</span><textarea value={tab === 'diary' ? form.story : form.notes} onChange={(event) => update(tab === 'diary' ? 'story' : 'notes', event.target.value)} /></label><div className="row"><button className="btn primary">Save changes</button><button type="button" className="btn outline" onClick={() => setEditing(null)}>Cancel</button></div></form>
+        : tab === 'diary'
+          ? <article className="entry" key={entry.id}>{entry.photo ? <img className="sticker memory-photo" src={entry.photo} alt="Memory" /> : <Photo className="sticker" src={pet.photo} species={pet.species} />}<div><h3>{entry.title}</h3><span className="chip">{formatDate(entry.date)}</span><p className="story">{entry.story}</p></div><div className="entry-actions"><button type="button" className="mini-action" onClick={() => startEdit(entry)}>Edit</button><button type="button" className="mini-action danger-text" onClick={() => remove(entry.id)}>Delete</button></div></article>
+          : <article className="rec" key={entry.id}><div className="ico">Vet</div><div><h3>{entry.title}</h3><span className="chip">{formatDate(entry.date)}</span><p className="story">{entry.notes}</p></div><div className="entry-actions"><button type="button" className="mini-action" onClick={() => startEdit(entry)}>Edit</button><button type="button" className="mini-action danger-text" onClick={() => remove(entry.id)}>Delete</button></div></article>)}</div>
+    </div>
+  </>
+}
+
 function DiaryProfileActions({ data, setData, pet, goRehome }) {
   const [editing, setEditing] = useState(false)
   function edit() { setEditing(true) }
@@ -165,13 +369,13 @@ function DiaryProfileActions({ data, setData, pet, goRehome }) {
   return <>{editing && <div className="edit-overlay" role="dialog" aria-modal="true"><PetEditForm pet={pet} onSave={save} onCancel={() => setEditing(false)} /></div>}<div className="diary-profile-actions"><div className="profile-row"><button type="button" className="btn outline" onClick={edit}>Edit</button><button type="button" className="btn danger" onClick={remove}>Delete</button></div><button type="button" className="btn yellow" onClick={goRehome}>Rehome this pet</button></div></>
 }
 export default function App() {
-  const [user, setUser] = useState(undefined); const [path, setPath] = useState(() => appPath()); const [data, setData] = useStore(); const [breeds, setBreeds] = useState({ Dogs: fallbackDogs, Cats: FALLBACK_CAT_BREEDS, Other: ['Other'] }); const [tab, setTab] = useState('diary'); const [error, setError] = useState('')
+  const [user, setUser] = useState(undefined); const [path, setPath] = useState(() => appPath()); const [data, setData] = useStore(user?.uid); const [breeds, setBreeds] = useState({ Dogs: fallbackDogs, Cats: FALLBACK_CAT_BREEDS, Other: ['Other'] }); const [tab, setTab] = useState('diary'); const [error, setError] = useState('')
   const id = path.match(/^\/pets\/([^/]+)/)?.[1]
   useEffect(() => onAuthStateChanged(auth, setUser), [])
   useEffect(() => { Promise.allSettled([listDogBreeds(), listCatBreeds()]).then(([dogs, cats]) => setBreeds({ Dogs: dogs.status === 'fulfilled' ? dogs.value : fallbackDogs, Cats: cats.status === 'fulfilled' ? cats.value : FALLBACK_CAT_BREEDS, Other: ['Other'] })); const update = () => setPath(appPath()); addEventListener('popstate', update); return () => removeEventListener('popstate', update) }, [])
   useEffect(() => { function routeHeroEdit(event) { const button = event.target.closest('.hero button'); const pet = data.pets.find((item) => item.id === id); if (!button || !pet) return; const label = button.textContent.trim(); if (label === 'Edit') { event.preventDefault(); event.stopImmediatePropagation(); move(`/?edit=${encodeURIComponent(pet.id)}`) } } document.addEventListener('click', routeHeroEdit, true); return () => document.removeEventListener('click', routeHeroEdit, true) }, [data, id])
   useEffect(() => { function handleHeroAction(event) { const button = event.target.closest('.hero button'); const pet = data.pets.find((item) => item.id === id); if (!button || !pet) return; event.preventDefault(); event.stopImmediatePropagation(); if (button.textContent.trim() === 'Edit') { const name = window.prompt('Pet name', pet.name); if (name?.trim()) setData({ ...data, pets: data.pets.map((item) => item.id === pet.id ? { ...item, name: name.trim() } : item) }) } else if (button.textContent.trim() === 'Delete' && window.confirm('Delete this pet and its records?')) { const diary = { ...data.diary }; const vet = { ...data.vet }; delete diary[pet.id]; delete vet[pet.id]; setData({ ...data, pets: data.pets.filter((item) => item.id !== pet.id), diary, vet, posts: data.posts.filter((post) => post.petId !== pet.id) }); move('/') } } document.addEventListener('click', handleHeroAction, true); return () => document.removeEventListener('click', handleHeroAction, true) }, [data, id])
-  async function login() { try { setError(''); await signInWithPopup(auth, googleProvider) } catch (exception) { if (exception.code === 'auth/popup-blocked' || exception.code === 'auth/cancelled-popup-request') { await signInWithRedirect(auth, googleProvider); return } const messages = { 'auth/unauthorized-domain': `Add ${window.location.hostname} to Firebase Authentication authorized domains.`, 'auth/operation-not-allowed': 'Enable Google under Firebase Authentication > Sign-in method.', 'auth/api-key-not-valid': 'Check the Firebase web API key in client/src/firebase.js.' }; setError(messages[exception.code] || `Google sign-in failed (${exception.code || 'unknown error'}).`) } }
+  async function login() { try { setError(''); await signInWithPopup(auth, googleProvider); move('/') } catch (exception) { if (exception.code === 'auth/popup-blocked' || exception.code === 'auth/cancelled-popup-request') { move('/'); await signInWithRedirect(auth, googleProvider); return } const messages = { 'auth/unauthorized-domain': `Add ${window.location.hostname} to Firebase Authentication authorized domains.`, 'auth/operation-not-allowed': 'Enable Google under Firebase Authentication > Sign-in method.', 'auth/api-key-not-valid': 'Check the Firebase web API key in client/src/firebase.js.' }; setError(messages[exception.code] || `Google sign-in failed (${exception.code || 'unknown error'}).`) } }
   if (user === undefined) return <div className="loading">Loading tailTALES...</div>
   if (!user && path !== '/rehoming') return <Login onLogin={login} error={error} />
   const pet = data.pets.find((item) => item.id === id)

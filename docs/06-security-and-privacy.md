@@ -6,11 +6,22 @@ short, none of it is exotic, and a grader can check most of it in two minutes.
 Your repository is public, in your own account, and permanent. That is the point
 of it, and it is also why this file exists.
 
+## Status for Week 2 (2026-09-26)
+
+The client now keys local pet, diary, and vet data by Firebase UID, preventing
+the app from displaying one account's records to another account in the same
+browser. This is client-side separation only: records remain in `localStorage`,
+are not synced across devices, and are not protected by server authorization.
+The client uses the existing API for public rehoming reads and publishing when
+`VITE_API_BASE` points to an available server. The API is not deployed or
+verified in this update.
+
+The Week 1 assessment is retained below as a record of the earlier state.
+
 ## Status for Week 1 (2026-09-22)
 
-This assessment describes the current first draft. The GitHub Pages client is
-working, but the Express/PostgreSQL backend is still planned work and is not
-yet used by the deployed client.
+At that time, the GitHub Pages client was working, but the Express/PostgreSQL
+backend was not used by the client.
 
 ## Before the first push
 
@@ -54,8 +65,9 @@ The rotation is the fix; the cleanup is hygiene.
       rate limited when the API is deployed.
 - [x] The app uses Google sign-in through Firebase; it does not collect or
       store application passwords.
-- [x] Planned pet, diary, and vet queries check the Firebase UID in the
-      database ownership query before returning or changing data.
+- [ ] The client uses the pet, diary, and vet routes that check Firebase UID
+      ownership in database queries. The server routes contain these checks,
+      but the client still stores these records locally.
 - [ ] `npm audit` has been run for both client and server dependencies, with
       fixes reviewed.
 
@@ -87,10 +99,15 @@ The half that matters more, because it is about other people.
 
 The privacy boundary is intended to be: pet profiles, diary memories, and vet
 records are private to the signed-in owner; only information deliberately
-published as a rehoming post is public. In the current demo mode, records are
-stored in browser `localStorage`, so this boundary is not reliable when several
-people use the same browser. The planned API improves this by verifying the
-Firebase ID token and applying the owner UID in database queries.
+published as a rehoming post is public. The client currently stores private
+records in browser `localStorage`, keyed by Firebase UID. This keeps one
+account's records from appearing in another account's app view on the same
+browser, but it is not a security boundary: browser data can be inspected or
+changed, and records do not follow the user to another device. The API verifies
+Firebase ID tokens and checks owner UID in database queries, but the client
+does not yet use these private routes. Rehoming posts are public when published
+to the configured API; local preview posts remain on the device and cannot be
+shared as public individual posts.
 
 If your project handles personal information about real people, you are inside
 the Philippine Data Privacy Act. Collect the minimum, say what you collect, and

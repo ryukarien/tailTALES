@@ -96,6 +96,40 @@ At least six entries. One per real use. Every entry needs a commit link.
   changed from what it gave me.
 - **Commit:** https://github.com/YOUR-USERNAME/YOUR-REPO/commit/SHA
 
+### 2026-09-26 - Account-scoped pet diary and form updates
+
+- **Tool:** GitHub Copilot
+- **What I asked for:** Asked it to stop one signed-in user from seeing another
+  user's pet diary, open My Pets automatically after sign-in, support custom
+  species and breed values, add an optional photo to a new memory, and improve
+  mobile spacing and Sign out placement.
+- **What it gave back:** Changed the browser store to use a Firebase-UID-specific
+  key, returned successful sign-ins to My Pets, added custom species and breed
+  inputs, reused the photo upload card for diary memories, and tightened the
+  mobile header layout.
+- **What I kept, what I changed, and why:** Kept the UID-specific local keys as
+  a short-term account separation improvement, but documented that they are
+  not server security and do not sync between devices. I kept the optional
+  image as a data URL to match the app's existing local photo handling.
+- **Commit:** Pending; add the commit URL after committing these changes.
+
+### 2026-09-26 - Public rehoming links and project documentation
+
+- **Tool:** GitHub Copilot
+- **What I asked for:** Asked it to fix the login-page Rehoming link and copied
+  post links, keep private diary data out of public views, and update the weekly
+  report, security/privacy assessment, AI-use record, and both README files.
+- **What it gave back:** Made the login link navigate within the app, read the
+  post ID from shared rehoming URLs, connected rehoming reads and publishing to
+  the existing API when configured, and hid individual share actions for
+  device-only preview posts. It also updated the project documentation to
+  distinguish local account scoping from server-enforced privacy.
+- **What I kept, what I changed, and why:** Kept the existing Express routes
+  and added a client helper that creates a pet and marks it for rehoming. I
+  kept local preview behavior as a fallback, but made its sharing limitation
+  explicit because those posts cannot resolve in another browser.
+- **Commit:** Pending; add the commit URL after committing these changes.
+
 ## 2. Where the AI got it wrong
 
 Three cases. Be specific. If you write that the AI was never wrong, this section
