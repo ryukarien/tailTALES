@@ -241,7 +241,7 @@ function EnhancedRehoming({ data, setData, user, onLogin }) {
     const focusId = sharedSnapshotId || sharedPostId
     if (!focusId || (remotePosts === null && !sharedSnapshotId)) return
     const element = document.getElementById(`rehoming-${focusId}`)
-    if (element) requestAnimationFrame(() => element.scrollIntoView({ behavior: 'auto', block: 'center' }))
+    if (element) requestAnimationFrame(() => element.scrollIntoView({ behavior: 'instant', block: 'center' }))
     else setMessage('This rehoming post is no longer available.')
   }, [remotePosts, sharedSnapshotId, sharedPostId])
 
