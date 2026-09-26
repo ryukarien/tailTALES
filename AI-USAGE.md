@@ -111,7 +111,7 @@ At least six entries. One per real use. Every entry needs a commit link.
   a short-term account separation improvement, but documented that they are
   not server security and do not sync between devices. I kept the optional
   image as a data URL to match the app's existing local photo handling.
-- **Commit:** Pending; add the commit URL after committing these changes.
+- **Commit:** https://github.com/ryukarien/tailTALES/commit/ba02e85
 
 ### 2026-09-26 - Public rehoming links and project documentation
 
@@ -128,7 +128,7 @@ At least six entries. One per real use. Every entry needs a commit link.
   and added a client helper that creates a pet and marks it for rehoming. I
   kept local preview behavior as a fallback, but made its sharing limitation
   explicit because those posts cannot resolve in another browser.
-- **Commit:** Pending; add the commit URL after committing these changes.
+- **Commit:** https://github.com/ryukarien/tailTALES/commit/ba02e85
 
 ## 2. Where the AI got it wrong
 
