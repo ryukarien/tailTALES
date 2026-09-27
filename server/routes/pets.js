@@ -15,18 +15,19 @@ petsRouter.get('/mine', requireAuth, async (req, res) => {
 })
 
 petsRouter.post('/', requireAuth, async (req, res) => {
-  const { name, breed, birthday, photoUrl } = req.body
+  const { name, species, breed, birthday, photoUrl } = req.body
 
   if (!name || !breed) {
     return res.status(400).json({ error: 'name and breed are required' })
   }
 
   const { rows } = await pool.query(
-    `insert into pets (owner_uid, name, breed, birthday, photo_url)
-     values ($1, $2, $3, $4, $5) returning *`,
+    `insert into pets (owner_uid, name, species, breed, birthday, photo_url)
+     values ($1, $2, $3, $4, $5, $6) returning *`,
     [
       req.uid,
       name,
+      species || 'Dogs',
       breed,
       birthday || null,
       photoUrl || null
@@ -37,13 +38,14 @@ petsRouter.post('/', requireAuth, async (req, res) => {
 })
 
 petsRouter.put('/:id', requireAuth, async (req, res) => {
-  const { name, breed, birthday, photoUrl } = req.body
+  const { name, species, breed, birthday, photoUrl } = req.body
 
   const { rows } = await pool.query(
-    `update pets set name = $1, breed = $2, birthday = $3, photo_url = $4
-     where id = $5 and owner_uid = $6 returning *`,
+    `update pets set name = $1, species = $2, breed = $3, birthday = $4, photo_url = $5
+     where id = $6 and owner_uid = $7 returning *`,
     [
       name,
+      species || 'Dogs',
       breed,
       birthday || null,
       photoUrl || null,
@@ -98,7 +100,7 @@ petsRouter.patch('/:id/rehoming', requireAuth, async (req, res) => {
 // This route is public and only returns pets that are currently being rehomed.
 petsRouter.get('/rehoming', async (_req, res) => {
   const { rows } = await pool.query(
-    `select id, owner_uid, name, breed, birthday, photo_url,
+    `select id, owner_uid, name, species, breed, birthday, photo_url,
             rehoming_description, rehoming_contact
      from pets where is_rehoming = true order by created_at desc`
   )

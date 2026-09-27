@@ -3,9 +3,24 @@ import { onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut } from
 import { auth, googleProvider } from './firebase'
 import { listDogBreeds, randomDogImage } from './api/dogApi'
 import { FALLBACK_CAT_BREEDS, listCatBreeds } from './api/catApi'
-import { fetchRehomingPets, publishRehomingPet } from './api/api'
+import {
+  addDiaryEntry,
+  addPet,
+  addVetRecord,
+  deleteDiaryEntry,
+  deletePet as deletePetRequest,
+  deleteVetRecord,
+  fetchDiary,
+  fetchMyPets,
+  fetchRehomingPets,
+  fetchVetRecords,
+  publishRehomingPet,
+  setRehoming,
+  updateDiaryEntry,
+  updatePet,
+  updateVetRecord,
+} from './api/api'
 
-const STORAGE_KEY = 'tailtales-v2'
 const PUBLIC_POSTS_KEY = 'tailtales-public-rehoming-v1'
 const fallbackDogs = ['Aspin (Asong Pinoy)', 'Shih Tzu', 'Labrador Retriever', 'Golden Retriever', 'Pomeranian', 'Poodle', 'Pug', 'Beagle', 'Siberian Husky']
 const seed = {
@@ -19,34 +34,21 @@ const seed = {
   ],
 }
 
-function readStore(ownerUid) {
-  let privateData = {}
+function readStore() {
   let posts = seed.posts
   try {
-    if (ownerUid) privateData = JSON.parse(localStorage.getItem(`${STORAGE_KEY}:${ownerUid}`)) || {}
     posts = JSON.parse(localStorage.getItem(PUBLIC_POSTS_KEY)) || seed.posts
   } catch { /* Use empty private data and the public preview posts. */ }
-  return { ...seed, ...privateData, posts }
+  return { ...seed, pets: [], diary: {}, vet: {}, posts }
 }
 
 function useStore(ownerUid) {
-  const [store, setStore] = useState(() => ({ ownerUid, data: readStore(ownerUid) }))
-  useEffect(() => setStore({ ownerUid, data: readStore(ownerUid) }), [ownerUid])
-  const active = store.ownerUid === ownerUid
-  const data = active ? store.data : { ...seed, pets: [], diary: {}, vet: {}, posts: readStore(ownerUid).posts }
+  const [data, setData] = useState(readStore)
+  useEffect(() => setData(readStore()), [ownerUid])
   useEffect(() => {
-    if (!active || !ownerUid) return
-    const { pets, diary, vet } = data
-    localStorage.setItem(`${STORAGE_KEY}:${ownerUid}`, JSON.stringify({ pets, diary, vet }))
     localStorage.setItem(PUBLIC_POSTS_KEY, JSON.stringify(data.posts))
-  }, [active, data, ownerUid])
-  function updateData(nextData) {
-    if (!active) return
-    setStore((current) => current.ownerUid === ownerUid
-      ? { ...current, data: typeof nextData === 'function' ? nextData(current.data) : nextData }
-      : current)
-  }
-  return [data, updateData]
+  }, [data.posts])
+  return [data, setData]
 }
 
 function formatDate(value) { return value ? new Date(`${value}T12:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '' }
@@ -93,11 +95,12 @@ function Login({ onLogin, error }) {
 
 function AddPet({ breeds, onAdd }) {
   const [open, setOpen] = useState(false); const [form, setForm] = useState({ name: '', species: 'Dogs', customSpecies: '', breed: '', customBreed: '', birthday: '', photo: '' })
+  const [formError, setFormError] = useState('')
   const update = (key, value) => setForm({ ...form, [key]: value })
   async function photo(event) { const file = event.target.files?.[0]; if (file) update('photo', await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file) })) }
-  async function submit(event) { event.preventDefault(); const species = form.species === 'Other' ? form.customSpecies.trim() : form.species; const breed = form.species === 'Other' || form.breed === '__other__' ? form.customBreed.trim() : form.breed; if (!form.name || !species || !breed) return; onAdd({ id: crypto.randomUUID(), name: form.name, species, breed, birthday: form.birthday, photo: form.photo }); setOpen(false); setForm({ name: '', species: 'Dogs', customSpecies: '', breed: '', customBreed: '', birthday: '', photo: '' }) }
+  async function submit(event) { event.preventDefault(); const species = form.species === 'Other' ? form.customSpecies.trim() : form.species; const breed = form.species === 'Other' || form.breed === '__other__' ? form.customBreed.trim() : form.breed; if (!form.name || !species || !breed) return; try { await onAdd({ name: form.name, species, breed, birthday: form.birthday, photo: form.photo }); setOpen(false); setFormError(''); setForm({ name: '', species: 'Dogs', customSpecies: '', breed: '', customBreed: '', birthday: '', photo: '' }) } catch (error) { setFormError(error.message || 'Could not save this pet.') } }
   if (!open) return <button className="pet add" onClick={() => setOpen(true)}><span className="add-icon">+</span><span>Add a pet</span></button>
-  return <div className="edit-overlay" role="dialog" aria-modal="true"><form className="card form add-form" onSubmit={submit}><h2>Add a pet</h2><label className="field"><span>Name</span><input value={form.name} onChange={(event) => update('name', event.target.value)} required /></label><label className="field"><span>Species</span><select value={form.species} onChange={(event) => setForm({ ...form, species: event.target.value, customSpecies: '', breed: '', customBreed: '' })}><option>Dogs</option><option>Cats</option><option>Other</option></select>{form.species === 'Other' && <input placeholder="Type a species" value={form.customSpecies} onChange={(event) => update('customSpecies', event.target.value)} required />}</label><label className="field"><span>Breed</span>{form.species === 'Other' ? <input placeholder="Type a breed" value={form.customBreed} onChange={(event) => update('customBreed', event.target.value)} required /> : <><select value={form.breed} onChange={(event) => update('breed', event.target.value)} required><option value="">Choose a breed</option>{(breeds[form.species] || []).map((breed) => <option key={breed}>{breed}</option>)}<option value="__other__">Other</option></select>{form.breed === '__other__' && <input placeholder="Type a breed" value={form.customBreed} onChange={(event) => update('customBreed', event.target.value)} required />}</>}</label><label className="field"><span>Birthday</span><input type="date" value={form.birthday} onChange={(event) => update('birthday', event.target.value)} /></label><UploadBox value={form.photo} onChange={photo} /><div className="row"><button className="btn primary">Save pet</button><button type="button" className="btn outline" onClick={() => setOpen(false)}>Cancel</button></div></form></div>
+  return <div className="edit-overlay" role="dialog" aria-modal="true"><form className="card form add-form" onSubmit={submit}><h2>Add a pet</h2>{formError && <p className="share-message" role="alert">{formError}</p>}<label className="field"><span>Name</span><input value={form.name} onChange={(event) => update('name', event.target.value)} required /></label><label className="field"><span>Species</span><select value={form.species} onChange={(event) => setForm({ ...form, species: event.target.value, customSpecies: '', breed: '', customBreed: '' })}><option>Dogs</option><option>Cats</option><option>Other</option></select>{form.species === 'Other' && <input placeholder="Type a species" value={form.customSpecies} onChange={(event) => update('customSpecies', event.target.value)} required />}</label><label className="field"><span>Breed</span>{form.species === 'Other' ? <input placeholder="Type a breed" value={form.customBreed} onChange={(event) => update('customBreed', event.target.value)} required /> : <><select value={form.breed} onChange={(event) => update('breed', event.target.value)} required><option value="">Choose a breed</option>{(breeds[form.species] || []).map((breed) => <option key={breed}>{breed}</option>)}<option value="__other__">Other</option></select>{form.breed === '__other__' && <input placeholder="Type a breed" value={form.customBreed} onChange={(event) => update('customBreed', event.target.value)} required />}</>}</label><label className="field"><span>Birthday</span><input type="date" value={form.birthday} onChange={(event) => update('birthday', event.target.value)} /></label><UploadBox value={form.photo} onChange={photo} /><div className="row"><button className="btn primary">Save pet</button><button type="button" className="btn outline" onClick={() => setOpen(false)}>Cancel</button></div></form></div>
 }
 
 function PetCard({ pet, index, openPet, onEdit, onDelete }) {
@@ -106,22 +109,24 @@ function PetCard({ pet, index, openPet, onEdit, onDelete }) {
 
 function PetEditForm({ pet, onSave, onCancel }) {
   const [form, setForm] = useState({ name: pet.name, breed: pet.breed, birthday: pet.birthday })
+  const [formError, setFormError] = useState('')
   const update = (key, value) => setForm({ ...form, [key]: value })
-  return <form className="card pet-edit-form" onSubmit={(event) => { event.preventDefault(); if (form.name.trim()) onSave({ ...pet, ...form, name: form.name.trim(), breed: form.breed.trim() || pet.breed }) }}><h2>Edit {pet.name}</h2><label className="field"><span>Name</span><input value={form.name} onChange={(event) => update('name', event.target.value)} required /></label><label className="field"><span>Breed</span><input value={form.breed} onChange={(event) => update('breed', event.target.value)} required /></label><label className="field"><span>Birthday</span><input type="date" value={form.birthday} onChange={(event) => update('birthday', event.target.value)} /></label><div className="row"><button className="btn primary">Save changes</button><button className="btn outline" type="button" onClick={onCancel}>Cancel</button></div></form>
+  async function submit(event) { event.preventDefault(); if (!form.name.trim()) return; try { await onSave({ ...pet, ...form, name: form.name.trim(), breed: form.breed.trim() || pet.breed }); setFormError('') } catch (error) { setFormError(error.message || 'Could not save changes.') } }
+  return <form className="card pet-edit-form" onSubmit={submit}><h2>Edit {pet.name}</h2>{formError && <p className="share-message" role="alert">{formError}</p>}<label className="field"><span>Name</span><input value={form.name} onChange={(event) => update('name', event.target.value)} required /></label><label className="field"><span>Breed</span><input value={form.breed} onChange={(event) => update('breed', event.target.value)} required /></label><label className="field"><span>Birthday</span><input type="date" value={form.birthday} onChange={(event) => update('birthday', event.target.value)} /></label><div className="row"><button className="btn primary">Save changes</button><button className="btn outline" type="button" onClick={onCancel}>Cancel</button></div></form>
 }
 
 function Pets({ data, setData, breeds, openPet }) {
   const [editingPet, setEditingPet] = useState(() => { const editId = new URLSearchParams(window.location.search).get('edit'); return data.pets.find((pet) => pet.id === editId) || null })
   function editPet(pet) { setEditingPet(pet) }
-  function savePet(pet) { setData({ ...data, pets: data.pets.map((item) => item.id === pet.id ? pet : item) }); setEditingPet(null) }
-  function deletePet(id) { if (window.confirm('Delete this pet and their diary and vet records?')) { const diary = { ...data.diary }; const vet = { ...data.vet }; delete diary[id]; delete vet[id]; setData({ ...data, pets: data.pets.filter((pet) => pet.id !== id), diary, vet, posts: data.posts.filter((post) => post.petId !== id) }) } }
-  return <><h1 className="page-title">My pets</h1><p className="lede">{data.pets.length ? 'Every memory and vet visit, together in one place. Pick a pet to open their diary.' : 'Add your first pet to start their diary and keep their vet records.'}</p>{editingPet && <PetEditForm pet={editingPet} onSave={savePet} onCancel={() => setEditingPet(null)} />}<div className="grid pets">{data.pets.map((pet, index) => <PetCard key={pet.id} pet={pet} index={index} openPet={openPet} onEdit={editPet} onDelete={deletePet} />)}<AddPet breeds={breeds} onAdd={(pet) => setData({ ...data, pets: [...data.pets, pet] })} /></div></>
+  async function savePet(pet) { const savedPet = await updatePet(pet.id, pet); setData((current) => ({ ...current, pets: current.pets.map((item) => item.id === savedPet.id ? savedPet : item) })); setEditingPet(null) }
+  async function deletePet(id) { if (!window.confirm('Delete this pet and their diary and vet records?')) return; try { await deletePetRequest(id); setData((current) => { const diary = { ...current.diary }; const vet = { ...current.vet }; delete diary[id]; delete vet[id]; return { ...current, pets: current.pets.filter((pet) => pet.id !== id), diary, vet, posts: current.posts.filter((post) => post.petId !== id) } }) } catch (error) { window.alert(error.message || 'Could not delete this pet.') } }
+  return <><h1 className="page-title">My pets</h1><p className="lede">{data.pets.length ? 'Every memory and vet visit, together in one place. Pick a pet to open their diary.' : 'Add your first pet to start their diary and keep their vet records.'}</p>{editingPet && <PetEditForm pet={editingPet} onSave={savePet} onCancel={() => setEditingPet(null)} />}<div className="grid pets">{data.pets.map((pet, index) => <PetCard key={pet.id} pet={pet} index={index} openPet={openPet} onEdit={editPet} onDelete={deletePet} />)}<AddPet breeds={breeds} onAdd={async (pet) => { const savedPet = await addPet(pet); setData((current) => ({ ...current, pets: [savedPet, ...current.pets] })) }} /></div></>
 }
 
 function Diary({ data, setData, pet, tab, setTab, goRehome }) {
   const [form, setForm] = useState({ title: '', date: '', story: '', photo: '', notes: '' }); const update = (key, value) => setForm({ ...form, [key]: value })
   async function photo(event) { const file = event.target.files?.[0]; if (file) update('photo', await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file) })) }
-  function submit(event) { event.preventDefault(); const id = crypto.randomUUID(); if (tab === 'diary') setData({ ...data, diary: { ...data.diary, [pet.id]: [{ ...form, id }, ...(data.diary[pet.id] || [])] } }); else setData({ ...data, vet: { ...data.vet, [pet.id]: [{ ...form, id }, ...(data.vet[pet.id] || [])] } }); setForm({ title: '', date: '', story: '', photo: '', notes: '' }) }
+  async function submit(event) { event.preventDefault(); try { const savedEntry = tab === 'diary' ? await addDiaryEntry(pet.id, form) : await addVetRecord(pet.id, form); setData((current) => tab === 'diary' ? { ...current, diary: { ...current.diary, [pet.id]: [savedEntry, ...(current.diary[pet.id] || [])] } } : { ...current, vet: { ...current.vet, [pet.id]: [savedEntry, ...(current.vet[pet.id] || [])] } }); setForm({ title: '', date: '', story: '', photo: '', notes: '' }) } catch (error) { window.alert(error.message || 'Could not save this record.') } }
   const entries = tab === 'diary' ? data.diary[pet.id] || [] : data.vet[pet.id] || []
   return <><a className="back" href="/" onClick={(event) => { event.preventDefault(); move('/') }}>← All pets</a><section className="hero"><img className="avatar sticker" src={pet.photo || asset('paw_pet.png')} onError={fallbackImage} alt="" /><div><h1>{pet.name}</h1><p className="breed">{pet.breed}</p><p className="meta">Born {formatDate(pet.birthday)}</p></div><div className="hero-actions"><div className="row"><button className="btn outline">Edit</button><button className="btn danger">Delete</button></div><button className="btn yellow" onClick={goRehome}>Rehome this pet</button></div></section><div className="seg"><button className={tab === 'diary' ? 'on' : ''} onClick={() => setTab('diary')}>Diary <small>{data.diary[pet.id]?.length || 0}</small></button><button className={tab === 'vet' ? 'on' : ''} onClick={() => setTab('vet')}>Vet records <small>{data.vet[pet.id]?.length || 0}</small></button></div><div className="split"><form className="card form" onSubmit={submit}><h2>{tab === 'diary' ? 'New memory' : 'New vet record'}</h2>{tab === 'diary' ? <><label className="field"><span>Title</span><input value={form.title} onChange={(event) => update('title', event.target.value)} required placeholder="e.g. First day at the beach" /></label><label className="field"><span>Story <small>(optional)</small></span><textarea value={form.story} onChange={(event) => update('story', event.target.value)} placeholder="What happened?" /></label><label className="field"><span>Photo <small>(optional)</small></span><input type="file" accept="image/*" onChange={photo} /></label></> : <><label className="field"><span>Vaccine or visit</span><input value={form.title} onChange={(event) => update('title', event.target.value)} required placeholder="e.g. Annual checkup" /></label><label className="field"><span>Notes <small>(optional)</small></span><textarea value={form.notes} onChange={(event) => update('notes', event.target.value)} placeholder="Reactions, weight, next steps" /></label></>}<label className="field"><span>Date</span><input type="date" value={form.date} onChange={(event) => update('date', event.target.value)} required /></label><button className="btn primary block">{tab === 'diary' ? 'Add to diary' : 'Add record'}</button></form><div className="list">{entries.length ? entries.map((entry) => tab === 'diary' ? <article className="entry" key={entry.id}>{entry.photo && <img className="sticker" src={entry.photo} onError={fallbackImage} alt="" />}<div><h3>{entry.title}</h3><span className="chip">{formatDate(entry.date)}</span><p className="story">{entry.story}</p></div></article> : <article className="rec" key={entry.id}><div className="ico">✚</div><div><h3>{entry.title}</h3><span className="chip">{formatDate(entry.date)}</span><p className="story">{entry.notes}</p></div></article>) : <div className="empty"><h3>No {tab === 'diary' ? 'memories' : 'vet records'} yet</h3><p>Add the first one here.</p></div>}</div></div></>
 }
@@ -138,9 +143,9 @@ function FunctionalDiary({ data, setData, pet, tab, setTab, goRehome, editPet, d
   const [form, setForm] = useState({ title: '', date: '', story: '', photo: '', notes: '' })
   const entries = tab === 'diary' ? data.diary[pet.id] || [] : data.vet[pet.id] || []
   const update = (key, value) => setForm({ ...form, [key]: value })
-  function submit(event) { event.preventDefault(); const id = crypto.randomUUID(); const next = tab === 'diary' ? { ...data, diary: { ...data.diary, [pet.id]: [{ ...form, id }, ...entries] } } : { ...data, vet: { ...data.vet, [pet.id]: [{ ...form, id }, ...entries] } }; setData(next); setForm({ title: '', date: '', story: '', photo: '', notes: '' }) }
-  function removeEntry(id) { if (!window.confirm('Delete this entry?')) return; const nextEntries = entries.filter((entry) => entry.id !== id); setData(tab === 'diary' ? { ...data, diary: { ...data.diary, [pet.id]: nextEntries } } : { ...data, vet: { ...data.vet, [pet.id]: nextEntries } }) }
-  function editEntry(entry) { const title = window.prompt(tab === 'diary' ? 'Memory title' : 'Vaccine or visit', entry.title); if (!title?.trim()) return; const text = window.prompt(tab === 'diary' ? 'Story' : 'Notes', tab === 'diary' ? entry.story : entry.notes) ?? ''; const nextEntries = entries.map((item) => item.id === entry.id ? { ...item, title: title.trim(), ...(tab === 'diary' ? { story: text } : { notes: text }) } : item); setData(tab === 'diary' ? { ...data, diary: { ...data.diary, [pet.id]: nextEntries } } : { ...data, vet: { ...data.vet, [pet.id]: nextEntries } }) }
+  async function submit(event) { event.preventDefault(); try { const savedEntry = tab === 'diary' ? await addDiaryEntry(pet.id, form) : await addVetRecord(pet.id, form); setData((current) => tab === 'diary' ? { ...current, diary: { ...current.diary, [pet.id]: [savedEntry, ...(current.diary[pet.id] || [])] } } : { ...current, vet: { ...current.vet, [pet.id]: [savedEntry, ...(current.vet[pet.id] || [])] } }); setForm({ title: '', date: '', story: '', photo: '', notes: '' }) } catch (error) { window.alert(error.message || 'Could not save this record.') } }
+  async function removeEntry(id) { if (!window.confirm('Delete this entry?')) return; try { if (tab === 'diary') await deleteDiaryEntry(pet.id, id); else await deleteVetRecord(pet.id, id); setData((current) => tab === 'diary' ? { ...current, diary: { ...current.diary, [pet.id]: (current.diary[pet.id] || []).filter((entry) => entry.id !== id) } } : { ...current, vet: { ...current.vet, [pet.id]: (current.vet[pet.id] || []).filter((entry) => entry.id !== id) } }) } catch (error) { window.alert(error.message || 'Could not delete this record.') } }
+  async function editEntry(entry) { const title = window.prompt(tab === 'diary' ? 'Memory title' : 'Vaccine or visit', entry.title); if (!title?.trim()) return; const text = window.prompt(tab === 'diary' ? 'Story' : 'Notes', tab === 'diary' ? entry.story : entry.notes) ?? ''; const updated = { ...entry, title: title.trim(), ...(tab === 'diary' ? { story: text } : { notes: text }) }; try { const savedEntry = tab === 'diary' ? await updateDiaryEntry(pet.id, entry.id, updated) : await updateVetRecord(pet.id, entry.id, updated); setData((current) => tab === 'diary' ? { ...current, diary: { ...current.diary, [pet.id]: (current.diary[pet.id] || []).map((item) => item.id === entry.id ? savedEntry : item) } } : { ...current, vet: { ...current.vet, [pet.id]: (current.vet[pet.id] || []).map((item) => item.id === entry.id ? savedEntry : item) } }) } catch (error) { window.alert(error.message || 'Could not update this record.') } }
   return <><a className="back" href="/" onClick={(event) => { event.preventDefault(); move('/') }}>← All pets</a><section className="hero"><Photo className="avatar sticker" src={pet.photo} species={pet.species} /><div><h1>{pet.name}</h1><p className="breed">{pet.breed}</p><p className="meta">Born {formatDate(pet.birthday)}</p></div><div className="hero-actions"><div className="row"><button className="btn outline" onClick={() => window.alert('Use the pet card Edit button to update this pet.')}>Edit</button><button className="btn danger" onClick={() => window.alert('Use the pet card Delete button to remove this pet.')}>Delete</button></div><button className="btn yellow" onClick={goRehome}>Rehome this pet</button></div></section><div className="seg"><button className={tab === 'diary' ? 'on' : ''} onClick={() => setTab('diary')}>Diary <small>{data.diary[pet.id]?.length || 0}</small></button><button className={tab === 'vet' ? 'on' : ''} onClick={() => setTab('vet')}>Vet records <small>{data.vet[pet.id]?.length || 0}</small></button></div><div className="split"><form className="card form" onSubmit={submit}><h2>{tab === 'diary' ? 'New memory' : 'New vet record'}</h2><label className="field"><span>{tab === 'diary' ? 'Title' : 'Vaccine or visit'}</span><input value={form.title} onChange={(event) => update('title', event.target.value)} required /></label>{tab === 'diary' ? <label className="field"><span>Story <small>(optional)</small></span><textarea value={form.story} onChange={(event) => update('story', event.target.value)} /></label> : <label className="field"><span>Notes <small>(optional)</small></span><textarea value={form.notes} onChange={(event) => update('notes', event.target.value)} /></label>}<label className="field"><span>Date</span><input type="date" value={form.date} onChange={(event) => update('date', event.target.value)} required /></label><button className="btn primary block">{tab === 'diary' ? 'Add to diary' : 'Add record'}</button></form><div className="list">{entries.length ? entries.map((entry) => tab === 'diary' ? <article className="entry" key={entry.id}>{entry.photo && <Photo className="sticker" src={entry.photo} species={pet.species} />}<div><h3>{entry.title}</h3><span className="chip">{formatDate(entry.date)}</span><p className="story">{entry.story}</p></div><div className="entry-actions"><button className="mini-action" onClick={() => editEntry(entry)}>Edit</button><button className="mini-action danger-text" onClick={() => removeEntry(entry.id)}>Delete</button></div></article> : <article className="rec" key={entry.id}><div className="ico">✚</div><div><h3>{entry.title}</h3><span className="chip">{formatDate(entry.date)}</span><p className="story">{entry.notes}</p></div><div className="entry-actions"><button className="mini-action" onClick={() => editEntry(entry)}>Edit</button><button className="mini-action danger-text" onClick={() => removeEntry(entry.id)}>Delete</button></div></article>) : <div className="empty"><h3>No {tab === 'diary' ? 'memories' : 'vet records'} yet</h3><p>Add the first one here.</p></div>}</div></div></>
 }
 
@@ -160,18 +165,53 @@ function SharePanel() {
   return <div className="share-panel"><strong>Share this page</strong><button className="mini-action" onClick={copy}>Copy link</button><button className="mini-action" onClick={facebook}>Facebook</button><button className="mini-action" onClick={instagram}>Instagram</button></div>
 }
 
-function WorkingPets({ data, setData, breeds, openPet }) {
+function WorkingPets({ data, setData, breeds, openPet, onApiError }) {
   const [editing, setEditing] = useState(null)
-  function save(pet) { setData({ ...data, pets: data.pets.map((item) => item.id === pet.id ? pet : item) }); setEditing(null) }
-  function remove(id) { if (!window.confirm('Delete this pet and its records?')) return; const diary = { ...data.diary }; const vet = { ...data.vet }; delete diary[id]; delete vet[id]; setData({ ...data, pets: data.pets.filter((item) => item.id !== id), diary, vet, posts: data.posts.filter((post) => post.petId !== id) }) }
-  return <><h1 className="page-title">My pets</h1><p className="lede">Every memory and vet visit, together in one place. Pick a pet to open their diary.</p>{editing && <div className="edit-overlay" role="dialog" aria-modal="true"><PetEditForm pet={editing} onSave={save} onCancel={() => setEditing(null)} /></div>}<div className="grid pets">{data.pets.map((pet, index) => <PetCard key={pet.id} pet={pet} index={index} openPet={openPet} onEdit={setEditing} onDelete={remove} />)}<AddPet breeds={breeds} onAdd={(pet) => setData({ ...data, pets: [...data.pets, pet] })} /></div></>
+  async function save(pet) {
+    try {
+      const savedPet = await updatePet(pet.id, pet)
+      setData((current) => ({ ...current, pets: current.pets.map((item) => item.id === savedPet.id ? savedPet : item) }))
+      setEditing(null)
+      onApiError('')
+    } catch (error) {
+      onApiError(error.message || 'Could not update this pet.')
+      throw error
+    }
+  }
+  async function create(pet) {
+    try {
+      const savedPet = await addPet(pet)
+      setData((current) => ({ ...current, pets: [savedPet, ...current.pets] }))
+      onApiError('')
+    } catch (error) {
+      onApiError(error.message || 'Could not add this pet.')
+      throw error
+    }
+  }
+  async function remove(id) {
+    if (!window.confirm('Delete this pet and its records?')) return
+    try {
+      await deletePetRequest(id)
+      setData((current) => {
+        const diary = { ...current.diary }
+        const vet = { ...current.vet }
+        delete diary[id]
+        delete vet[id]
+        return { ...current, pets: current.pets.filter((item) => item.id !== id), diary, vet, posts: current.posts.filter((post) => post.petId !== id) }
+      })
+      onApiError('')
+    } catch (error) {
+      onApiError(error.message || 'Could not delete this pet.')
+    }
+  }
+  return <><h1 className="page-title">My pets</h1><p className="lede">Every memory and vet visit, together in one place. Pick a pet to open their diary.</p>{editing && <div className="edit-overlay" role="dialog" aria-modal="true"><PetEditForm pet={editing} onSave={save} onCancel={() => setEditing(null)} /></div>}<div className="grid pets">{data.pets.map((pet, index) => <PetCard key={pet.id} pet={pet} index={index} openPet={openPet} onEdit={setEditing} onDelete={remove} />)}<AddPet breeds={breeds} onAdd={create} /></div></>
 }
 
 function WorkingDiary({ data, setData, pet, tab, setTab, goRehome }) {
   const [editing, setEditing] = useState(null); const [form, setForm] = useState({ title: '', date: '', story: '', notes: '' }); const entries = tab === 'diary' ? data.diary[pet.id] || [] : data.vet[pet.id] || []
   function edit(entry) { setEditing(entry.id); setForm({ title: entry.title, date: entry.date, story: entry.story || '', notes: entry.notes || '' }) }
-  function save(event) { event.preventDefault(); const next = entries.map((entry) => entry.id === editing ? { ...entry, title: form.title, date: form.date, ...(tab === 'diary' ? { story: form.story } : { notes: form.notes }) } : entry); setData(tab === 'diary' ? { ...data, diary: { ...data.diary, [pet.id]: next } } : { ...data, vet: { ...data.vet, [pet.id]: next } }); setEditing(null) }
-  function remove(id) { if (!window.confirm('Delete this entry?')) return; const next = entries.filter((entry) => entry.id !== id); setData(tab === 'diary' ? { ...data, diary: { ...data.diary, [pet.id]: next } } : { ...data, vet: { ...data.vet, [pet.id]: next } }) }
+  async function save(event) { event.preventDefault(); const updated = { ...entries.find((entry) => entry.id === editing), ...form }; try { const savedEntry = tab === 'diary' ? await updateDiaryEntry(pet.id, editing, updated) : await updateVetRecord(pet.id, editing, updated); setData((current) => tab === 'diary' ? { ...current, diary: { ...current.diary, [pet.id]: (current.diary[pet.id] || []).map((entry) => entry.id === editing ? savedEntry : entry) } } : { ...current, vet: { ...current.vet, [pet.id]: (current.vet[pet.id] || []).map((entry) => entry.id === editing ? savedEntry : entry) } }); setEditing(null) } catch (error) { window.alert(error.message || 'Could not update this record.') } }
+  async function remove(id) { if (!window.confirm('Delete this entry?')) return; try { if (tab === 'diary') await deleteDiaryEntry(pet.id, id); else await deleteVetRecord(pet.id, id); setData((current) => tab === 'diary' ? { ...current, diary: { ...current.diary, [pet.id]: (current.diary[pet.id] || []).filter((entry) => entry.id !== id) } } : { ...current, vet: { ...current.vet, [pet.id]: (current.vet[pet.id] || []).filter((entry) => entry.id !== id) } }) } catch (error) { window.alert(error.message || 'Could not delete this record.') } }
   return <><a className="back" href="/" onClick={(event) => { event.preventDefault(); move('/') }}>← All pets</a><section className="hero"><Photo className="avatar sticker" src={pet.photo} species={pet.species} /><div><h1>{pet.name}</h1><p className="breed">{pet.breed}</p><p className="meta">Born {formatDate(pet.birthday)}</p></div><div className="hero-actions"><button type="button" className="btn yellow" onClick={goRehome}>Rehome this pet</button></div></section><div className="seg"><button type="button" className={tab === 'diary' ? 'on' : ''} onClick={() => setTab('diary')}>Diary <small>{data.diary[pet.id]?.length || 0}</small></button><button type="button" className={tab === 'vet' ? 'on' : ''} onClick={() => setTab('vet')}>Vet records <small>{data.vet[pet.id]?.length || 0}</small></button></div><div className="list">{entries.map((entry) => editing === entry.id ? <form className="card entry-edit-form" key={entry.id} onSubmit={save}><h2>Edit {tab === 'diary' ? 'memory' : 'record'}</h2><label className="field"><span>Title</span><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></label><label className="field"><span>Date</span><input type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} required /></label><label className="field"><span>{tab === 'diary' ? 'Story' : 'Notes'}</span><textarea value={tab === 'diary' ? form.story : form.notes} onChange={(event) => setForm({ ...form, [tab === 'diary' ? 'story' : 'notes']: event.target.value })} /></label><div className="row"><button className="btn primary">Save changes</button><button type="button" className="btn outline" onClick={() => setEditing(null)}>Cancel</button></div></form> : tab === 'diary' ? <article className="entry" key={entry.id}><div><h3>{entry.title}</h3><span className="chip">{formatDate(entry.date)}</span><p className="story">{entry.story}</p></div><div className="entry-actions"><button type="button" className="mini-action" onClick={() => edit(entry)}>Edit</button><button type="button" className="mini-action danger-text" onClick={() => remove(entry.id)}>Delete</button></div></article> : <article className="rec" key={entry.id}><div className="ico">✚</div><div><h3>{entry.title}</h3><span className="chip">{formatDate(entry.date)}</span><p className="story">{entry.notes}</p></div><div className="entry-actions"><button type="button" className="mini-action" onClick={() => edit(entry)}>Edit</button><button type="button" className="mini-action danger-text" onClick={() => remove(entry.id)}>Delete</button></div></article>)}</div></>
 }
 
@@ -192,6 +232,7 @@ function EnhancedRehoming({ data, setData, user, onLogin }) {
   const [pageOpen, setPageOpen] = useState(false)
   const [postOpen, setPostOpen] = useState('')
   const [message, setMessage] = useState('')
+  const [deletingPost, setDeletingPost] = useState('')
   const searchParams = new URLSearchParams(window.location.search)
   const sharedPostId = searchParams.get('post')
   const sharedPost = readSharedPost(searchParams.get('shared'))
@@ -294,6 +335,24 @@ function EnhancedRehoming({ data, setData, user, onLogin }) {
     setForm({ petId: '', description: '', contact: '' })
   }
 
+  async function removePost(post) {
+    if (!window.confirm('Remove this pet from the rehoming board?')) return
+    setDeletingPost(post.id)
+    try {
+      if (remotePosts?.some((item) => item.id === post.id)) {
+        await setRehoming(post.id, { isRehoming: false })
+        setRemotePosts((current) => current.filter((item) => item.id !== post.id))
+      } else {
+        setData((current) => ({ ...current, posts: current.posts.filter((item) => item.id !== post.id) }))
+      }
+      setMessage('The rehoming post has been removed.')
+    } catch {
+      setMessage('Could not remove this rehoming post. Please try again.')
+    } finally {
+      setDeletingPost('')
+    }
+  }
+
   return <>
     <div className="page-head">
       <div><h1 className="page-title">Rehoming</h1><p className="lede">Help a pet find a new family.</p></div>
@@ -320,6 +379,7 @@ function EnhancedRehoming({ data, setData, user, onLogin }) {
         <h3>Hello, I'm {post.name}</h3><p className="small">Born {formatDate(post.birthday)}</p><p className="contact">Contact: {post.contact}</p><p className="desc">{post.description}</p>
         <div className="post-share"><button className="btn outline share" onClick={() => setPostOpen(postOpen === post.id ? '' : post.id)}>Share link</button>
           {postOpen === post.id && <div className="share-popover"><button onClick={() => copy(postUrl(post), 'Post link copied.')}>Copy link</button><button onClick={() => facebook(postUrl(post))}>Facebook</button><button onClick={() => instagram(postUrl(post))}>Instagram</button></div>}
+          {user?.uid && post.ownerUid === user.uid && <button type="button" className="mini-action danger-text" disabled={deletingPost === post.id} onClick={() => removePost(post)}>{deletingPost === post.id ? 'Removing...' : 'Delete'}</button>}
         </div>
       </div>
     </article>)}</div>
@@ -329,15 +389,15 @@ function EnhancedRehoming({ data, setData, user, onLogin }) {
 function LegacyCompleteDiary({ data, setData, pet, tab, setTab, goRehome }) {
   const [form, setForm] = useState({ title: '', date: '', story: '', notes: '' }); const [editing, setEditing] = useState(null); const entries = tab === 'diary' ? data.diary[pet.id] || [] : data.vet[pet.id] || []
   const update = (key, value) => setForm({ ...form, [key]: value })
-  function add(event) { event.preventDefault(); const id = crypto.randomUUID(); const next = [...entries, { ...form, id }]; setData(tab === 'diary' ? { ...data, diary: { ...data.diary, [pet.id]: next } } : { ...data, vet: { ...data.vet, [pet.id]: next } }); setForm({ title: '', date: '', story: '', notes: '' }) }
-  function remove(id) { if (!window.confirm('Delete this entry?')) return; const next = entries.filter((entry) => entry.id !== id); setData(tab === 'diary' ? { ...data, diary: { ...data.diary, [pet.id]: next } } : { ...data, vet: { ...data.vet, [pet.id]: next } }) }
-  function saveEdit(event) { event.preventDefault(); const next = entries.map((entry) => entry.id === editing ? { ...entry, ...form } : entry); setData(tab === 'diary' ? { ...data, diary: { ...data.diary, [pet.id]: next } } : { ...data, vet: { ...data.vet, [pet.id]: next } }); setEditing(null) }
+  async function add(event) { event.preventDefault(); try { const savedEntry = tab === 'diary' ? await addDiaryEntry(pet.id, form) : await addVetRecord(pet.id, form); setData((current) => tab === 'diary' ? { ...current, diary: { ...current.diary, [pet.id]: [savedEntry, ...(current.diary[pet.id] || [])] } } : { ...current, vet: { ...current.vet, [pet.id]: [savedEntry, ...(current.vet[pet.id] || [])] } }); setForm({ title: '', date: '', story: '', notes: '' }) } catch (error) { window.alert(error.message || 'Could not save this record.') } }
+  async function remove(id) { if (!window.confirm('Delete this entry?')) return; try { if (tab === 'diary') await deleteDiaryEntry(pet.id, id); else await deleteVetRecord(pet.id, id); setData((current) => tab === 'diary' ? { ...current, diary: { ...current.diary, [pet.id]: (current.diary[pet.id] || []).filter((entry) => entry.id !== id) } } : { ...current, vet: { ...current.vet, [pet.id]: (current.vet[pet.id] || []).filter((entry) => entry.id !== id) } }) } catch (error) { window.alert(error.message || 'Could not delete this record.') } }
+  async function saveEdit(event) { event.preventDefault(); const updated = { ...entries.find((entry) => entry.id === editing), ...form }; try { const savedEntry = tab === 'diary' ? await updateDiaryEntry(pet.id, editing, updated) : await updateVetRecord(pet.id, editing, updated); setData((current) => tab === 'diary' ? { ...current, diary: { ...current.diary, [pet.id]: (current.diary[pet.id] || []).map((entry) => entry.id === editing ? savedEntry : entry) } } : { ...current, vet: { ...current.vet, [pet.id]: (current.vet[pet.id] || []).map((entry) => entry.id === editing ? savedEntry : entry) } }); setEditing(null) } catch (error) { window.alert(error.message || 'Could not update this record.') } }
   function startEdit(entry) { setEditing(entry.id); setForm({ title: entry.title, date: entry.date, story: entry.story || '', notes: entry.notes || '' }) }
   return <><a className="back" href="/" onClick={(event) => { event.preventDefault(); move('/') }}>← All pets</a><section className="hero"><Photo className="avatar sticker" src={pet.photo} species={pet.species} /><div><h1>{pet.name}</h1><p className="breed">{pet.breed}</p><p className="meta">Born {formatDate(pet.birthday)}</p></div><div className="hero-actions"><button type="button" className="btn yellow" onClick={goRehome}>Rehome this pet</button></div></section><div className="seg"><button type="button" className={tab === 'diary' ? 'on' : ''} onClick={() => setTab('diary')}>Diary <small>{data.diary[pet.id]?.length || 0}</small></button><button type="button" className={tab === 'vet' ? 'on' : ''} onClick={() => setTab('vet')}>Vet records <small>{data.vet[pet.id]?.length || 0}</small></button></div><div className="split"><form className="card form" onSubmit={add}><h2>{tab === 'diary' ? 'New memory' : 'New vet record'}</h2><label className="field"><span>{tab === 'diary' ? 'Title' : 'Vaccine or visit'}</span><input value={form.title} onChange={(event) => update('title', event.target.value)} required /></label>{tab === 'diary' ? <label className="field"><span>Story <small>(optional)</small></span><textarea value={form.story} onChange={(event) => update('story', event.target.value)} /></label> : <label className="field"><span>Notes <small>(optional)</small></span><textarea value={form.notes} onChange={(event) => update('notes', event.target.value)} /></label>}<label className="field"><span>Date</span><input type="date" value={form.date} onChange={(event) => update('date', event.target.value)} required /></label><button className="btn primary block">{tab === 'diary' ? 'Add to diary' : 'Add record'}</button></form><div className="list">{entries.map((entry) => editing === entry.id ? <form className="card entry-edit-form" key={entry.id} onSubmit={saveEdit}><h2>Edit entry</h2><label className="field"><span>Title</span><input value={form.title} onChange={(event) => update('title', event.target.value)} required /></label><label className="field"><span>Date</span><input type="date" value={form.date} onChange={(event) => update('date', event.target.value)} required /></label><label className="field"><span>{tab === 'diary' ? 'Story' : 'Notes'}</span><textarea value={tab === 'diary' ? form.story : form.notes} onChange={(event) => update(tab === 'diary' ? 'story' : 'notes', event.target.value)} /></label><div className="row"><button className="btn primary">Save changes</button><button type="button" className="btn outline" onClick={() => setEditing(null)}>Cancel</button></div></form> : tab === 'diary' ? <article className="entry" key={entry.id}><div><h3>{entry.title}</h3><span className="chip">{formatDate(entry.date)}</span><p className="story">{entry.story}</p></div><div className="entry-actions"><button type="button" className="mini-action" onClick={() => startEdit(entry)}>Edit</button><button type="button" className="mini-action danger-text" onClick={() => remove(entry.id)}>Delete</button></div></article> : <article className="rec" key={entry.id}><div className="ico">✚</div><div><h3>{entry.title}</h3><span className="chip">{formatDate(entry.date)}</span><p className="story">{entry.notes}</p></div><div className="entry-actions"><button type="button" className="mini-action" onClick={() => startEdit(entry)}>Edit</button><button type="button" className="mini-action danger-text" onClick={() => remove(entry.id)}>Delete</button></div></article>)}</div></div></>
 }
 
 
-function CompleteDiary({ data, setData, pet, tab, setTab, goRehome }) {
+function CompleteDiary({ data, setData, pet, tab, setTab, goRehome, onApiError }) {
   const emptyForm = { title: '', date: '', story: '', notes: '', photo: '' }
   const [form, setForm] = useState(emptyForm)
   const [editing, setEditing] = useState(null)
@@ -357,26 +417,49 @@ function CompleteDiary({ data, setData, pet, tab, setTab, goRehome }) {
   }
 
   function saveEntries(nextEntries) {
-    setData(tab === 'diary'
-      ? { ...data, diary: { ...data.diary, [pet.id]: nextEntries } }
-      : { ...data, vet: { ...data.vet, [pet.id]: nextEntries } })
+    setData((current) => tab === 'diary'
+      ? { ...current, diary: { ...current.diary, [pet.id]: nextEntries } }
+      : { ...current, vet: { ...current.vet, [pet.id]: nextEntries } })
   }
 
-  function add(event) {
+  async function add(event) {
     event.preventDefault()
-    saveEntries([{ ...form, id: crypto.randomUUID() }, ...entries])
-    setForm(emptyForm)
+    try {
+      const savedEntry = tab === 'diary'
+        ? await addDiaryEntry(pet.id, form)
+        : await addVetRecord(pet.id, form)
+      saveEntries([savedEntry, ...entries])
+      setForm(emptyForm)
+      onApiError('')
+    } catch (error) {
+      onApiError(error.message || 'Could not save this record.')
+    }
   }
 
-  function remove(id) {
+  async function remove(id) {
     if (!window.confirm('Delete this entry?')) return
-    saveEntries(entries.filter((entry) => entry.id !== id))
+    try {
+      if (tab === 'diary') await deleteDiaryEntry(pet.id, id)
+      else await deleteVetRecord(pet.id, id)
+      saveEntries(entries.filter((entry) => entry.id !== id))
+      onApiError('')
+    } catch (error) {
+      onApiError(error.message || 'Could not delete this record.')
+    }
   }
 
-  function saveEdit(event) {
+  async function saveEdit(event) {
     event.preventDefault()
-    saveEntries(entries.map((entry) => entry.id === editing ? { ...entry, ...form } : entry))
-    setEditing(null)
+    try {
+      const savedEntry = tab === 'diary'
+        ? await updateDiaryEntry(pet.id, editing, form)
+        : await updateVetRecord(pet.id, editing, form)
+      saveEntries(entries.map((entry) => entry.id === editing ? savedEntry : entry))
+      setEditing(null)
+      onApiError('')
+    } catch (error) {
+      onApiError(error.message || 'Could not update this record.')
+    }
   }
 
   function startEdit(entry) {
@@ -405,23 +488,83 @@ function CompleteDiary({ data, setData, pet, tab, setTab, goRehome }) {
   </>
 }
 
-function DiaryProfileActions({ data, setData, pet, goRehome }) {
+function DiaryProfileActions({ data, setData, pet, goRehome, onApiError }) {
   const [editing, setEditing] = useState(false)
   function edit() { setEditing(true) }
-  function save(updatedPet) { setData({ ...data, pets: data.pets.map((item) => item.id === updatedPet.id ? updatedPet : item) }); setEditing(false) }
-  function remove() { if (!window.confirm('Delete this pet and its diary and vet records?')) return; const diary = { ...data.diary }; const vet = { ...data.vet }; delete diary[pet.id]; delete vet[pet.id]; setData({ ...data, pets: data.pets.filter((item) => item.id !== pet.id), diary, vet, posts: data.posts.filter((post) => post.petId !== pet.id) }); move('/') }
+  async function save(updatedPet) {
+    try {
+      const savedPet = await updatePet(updatedPet.id, updatedPet)
+      setData((current) => ({ ...current, pets: current.pets.map((item) => item.id === savedPet.id ? savedPet : item) }))
+      setEditing(false)
+      onApiError('')
+    } catch (error) {
+      onApiError(error.message || 'Could not update this pet.')
+      throw error
+    }
+  }
+  async function remove() {
+    if (!window.confirm('Delete this pet and its diary and vet records?')) return
+    try {
+      await deletePetRequest(pet.id)
+      setData((current) => {
+        const diary = { ...current.diary }
+        const vet = { ...current.vet }
+        delete diary[pet.id]
+        delete vet[pet.id]
+        return { ...current, pets: current.pets.filter((item) => item.id !== pet.id), diary, vet, posts: current.posts.filter((post) => post.petId !== pet.id) }
+      })
+      onApiError('')
+      move('/')
+    } catch (error) {
+      onApiError(error.message || 'Could not delete this pet.')
+    }
+  }
   return <>{editing && <div className="edit-overlay" role="dialog" aria-modal="true"><PetEditForm pet={pet} onSave={save} onCancel={() => setEditing(false)} /></div>}<div className="diary-profile-actions"><div className="profile-row"><button type="button" className="btn outline" onClick={edit}>Edit</button><button type="button" className="btn danger" onClick={remove}>Delete</button></div><button type="button" className="btn yellow" onClick={goRehome}>Rehome this pet</button></div></>
 }
 export default function App() {
-  const [user, setUser] = useState(undefined); const [path, setPath] = useState(() => appPath()); const [data, setData] = useStore(user?.uid); const [breeds, setBreeds] = useState({ Dogs: fallbackDogs, Cats: FALLBACK_CAT_BREEDS, Other: ['Other'] }); const [tab, setTab] = useState('diary'); const [error, setError] = useState('')
+  const [user, setUser] = useState(undefined); const [path, setPath] = useState(() => appPath()); const [data, setData] = useStore(user?.uid); const [breeds, setBreeds] = useState({ Dogs: fallbackDogs, Cats: FALLBACK_CAT_BREEDS, Other: ['Other'] }); const [tab, setTab] = useState('diary'); const [error, setError] = useState(''); const [apiMessage, setApiMessage] = useState(''); const [apiLoading, setApiLoading] = useState(false)
   const id = path.match(/^\/pets\/([^/]+)/)?.[1]
   useEffect(() => onAuthStateChanged(auth, setUser), [])
+  useEffect(() => {
+    let active = true
+    if (!user) {
+      setData((current) => ({ ...current, pets: [], diary: {}, vet: {} }))
+      setApiLoading(false)
+      return () => { active = false }
+    }
+
+    setApiLoading(true)
+    setApiMessage('')
+    setData((current) => ({ ...current, pets: [], diary: {}, vet: {} }))
+    async function loadAccountData() {
+      try {
+        const pets = await fetchMyPets()
+        const records = await Promise.all(pets.map(async (pet) => ({
+          id: pet.id,
+          diary: await fetchDiary(pet.id),
+          vet: await fetchVetRecords(pet.id),
+        })))
+        if (!active) return
+        setData((current) => ({
+          ...current,
+          pets,
+          diary: Object.fromEntries(records.map((record) => [record.id, record.diary])),
+          vet: Object.fromEntries(records.map((record) => [record.id, record.vet])),
+        }))
+      } catch (exception) {
+        if (active) setApiMessage(exception.message || 'Could not load your pets and records.')
+      } finally {
+        if (active) setApiLoading(false)
+      }
+    }
+    loadAccountData()
+    return () => { active = false }
+  }, [user?.uid, setData])
   useEffect(() => { Promise.allSettled([listDogBreeds(), listCatBreeds()]).then(([dogs, cats]) => setBreeds({ Dogs: dogs.status === 'fulfilled' ? dogs.value : fallbackDogs, Cats: cats.status === 'fulfilled' ? cats.value : FALLBACK_CAT_BREEDS, Other: ['Other'] })); const update = () => setPath(appPath()); addEventListener('popstate', update); return () => removeEventListener('popstate', update) }, [])
-  useEffect(() => { function routeHeroEdit(event) { const button = event.target.closest('.hero button'); const pet = data.pets.find((item) => item.id === id); if (!button || !pet) return; const label = button.textContent.trim(); if (label === 'Edit') { event.preventDefault(); event.stopImmediatePropagation(); move(`/?edit=${encodeURIComponent(pet.id)}`) } } document.addEventListener('click', routeHeroEdit, true); return () => document.removeEventListener('click', routeHeroEdit, true) }, [data, id])
-  useEffect(() => { function handleHeroAction(event) { const button = event.target.closest('.hero button'); const pet = data.pets.find((item) => item.id === id); if (!button || !pet) return; event.preventDefault(); event.stopImmediatePropagation(); if (button.textContent.trim() === 'Edit') { const name = window.prompt('Pet name', pet.name); if (name?.trim()) setData({ ...data, pets: data.pets.map((item) => item.id === pet.id ? { ...item, name: name.trim() } : item) }) } else if (button.textContent.trim() === 'Delete' && window.confirm('Delete this pet and its records?')) { const diary = { ...data.diary }; const vet = { ...data.vet }; delete diary[pet.id]; delete vet[pet.id]; setData({ ...data, pets: data.pets.filter((item) => item.id !== pet.id), diary, vet, posts: data.posts.filter((post) => post.petId !== pet.id) }); move('/') } } document.addEventListener('click', handleHeroAction, true); return () => document.removeEventListener('click', handleHeroAction, true) }, [data, id])
   async function login() { try { setError(''); await signInWithPopup(auth, googleProvider); move('/') } catch (exception) { if (exception.code === 'auth/popup-blocked' || exception.code === 'auth/cancelled-popup-request') { move('/'); await signInWithRedirect(auth, googleProvider); return } const messages = { 'auth/unauthorized-domain': `Add ${window.location.hostname} to Firebase Authentication authorized domains.`, 'auth/operation-not-allowed': 'Enable Google under Firebase Authentication > Sign-in method.', 'auth/api-key-not-valid': 'Check the Firebase web API key in client/src/firebase.js.' }; setError(messages[exception.code] || `Google sign-in failed (${exception.code || 'unknown error'}).`) } }
   if (user === undefined) return <div className="loading">Loading tailTALES...</div>
   if (!user && path !== '/rehoming') return <Login onLogin={login} error={error} />
+  if (user && apiLoading) return <><Nav path={path} user={user} onLogin={login} /><main><p role="status">Loading your pets and records...</p></main></>
   const pet = data.pets.find((item) => item.id === id)
-  return <><Nav path={path} user={user} onLogin={login} /><main>{path === '/' && <WorkingPets data={data} setData={setData} breeds={breeds} openPet={(petId) => { move(`/pets/${petId}`); setTab('diary') }} />}{pet && <div className="diary-route"><DiaryProfileActions data={data} setData={setData} pet={pet} goRehome={() => move(`/rehoming?pet=${encodeURIComponent(pet.id)}`)} /><CompleteDiary data={data} setData={setData} pet={pet} tab={tab} setTab={setTab} goRehome={() => move(`/rehoming?pet=${encodeURIComponent(pet.id)}`)} /></div>}{path === '/rehoming' && <EnhancedRehoming data={data} setData={setData} user={user} onLogin={login} />}</main></>
+  return <><Nav path={path} user={user} onLogin={login} /><main>{apiMessage && <p className="share-message" role="alert">{apiMessage}</p>}{path === '/' && <WorkingPets data={data} setData={setData} breeds={breeds} onApiError={setApiMessage} openPet={(petId) => { move(`/pets/${petId}`); setTab('diary') }} />}{pet && <div className="diary-route"><DiaryProfileActions data={data} setData={setData} pet={pet} onApiError={setApiMessage} goRehome={() => move(`/rehoming?pet=${encodeURIComponent(pet.id)}`)} /><CompleteDiary data={data} setData={setData} pet={pet} tab={tab} setTab={setTab} onApiError={setApiMessage} goRehome={() => move(`/rehoming?pet=${encodeURIComponent(pet.id)}`)} /></div>}{path === '/rehoming' && <EnhancedRehoming data={data} setData={setData} user={user} onLogin={login} />}</main></>
 }

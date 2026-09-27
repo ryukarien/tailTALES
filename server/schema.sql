@@ -10,6 +10,7 @@ create table pets (
   id                    uuid primary key default gen_random_uuid(),
   owner_uid             text not null,
   name                  text not null,
+  species               text not null default 'Dogs',
   breed                 text not null,
   birthday              date,
   photo_url             text,
@@ -27,6 +28,7 @@ create table diary_entries (
   pet_id      uuid not null references pets(id) on delete cascade,
   entry_date  date not null,
   caption     text,
+  story       text,
   photo_url   text,
   created_at  timestamptz not null default now()
 );

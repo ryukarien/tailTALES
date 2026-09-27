@@ -19,13 +19,11 @@ without an image does not.
 
 ## Current implementation note (2026-09-27)
 
-The client separates browser-stored pet, diary, and vet records by Firebase
-UID, but those records are not yet backed by the authenticated API and do not
-sync across devices. The Render API health check and public rehoming read return
-200; set and verify `VITE_API_BASE` in the GitHub Pages workflow before treating
-the deployed client as API-connected. Firebase-authenticated routes need testing
-after the exposed Admin key is revoked and replaced. The mobile header fix is in
-local source and still needs a Pages deployment. See the
+The current client loads private pet, diary, and vet records through the
+authenticated API. The production rollout still requires the database migration,
+an updated GitHub Pages build with `VITE_API_BASE`, and authenticated tests in
+two browsers. Older records in browser storage are not automatically imported.
+The mobile header fix is in local source and still needs a Pages deployment. See the
 [security and privacy notes](06-security-and-privacy.md) and
 [graded security checklist](../SECURITY-CHECKLIST.md) for current evidence.
 
