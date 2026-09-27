@@ -6,124 +6,96 @@ short, none of it is exotic, and a grader can check most of it in two minutes.
 Your repository is public, in your own account, and permanent. That is the point
 of it, and it is also why this file exists.
 
-## Status for Week 2 (2026-09-26)
-
-The client now keys local pet, diary, and vet data by Firebase UID, preventing
-the app from displaying one account's records to another account in the same
-browser. This is client-side separation only: records remain in `localStorage`,
-are not synced across devices, and are not protected by server authorization.
-The client uses the existing API for public rehoming reads and publishing when
-`VITE_API_BASE` points to an available server. The API is not deployed or
-verified in this update.
-
-The Week 1 assessment is retained below as a record of the earlier state.
-
-## Status for Week 1 (2026-09-22)
-
-At that time, the GitHub Pages client was working, but the Express/PostgreSQL
-backend was not used by the client.
-
 ## Before the first push
 
-- [x] `.gitignore` includes `.env` and `.env.*`, while allowing `.env.example`.
-- [x] No environment files, PEM files, or SSH private keys are intentionally
-      tracked in the repository.
-- [ ] `.env.example` is committed with placeholder values only. The setup
-      documentation currently describes the required variables, but this file
-      still needs to be added.
-- [ ] No connection string, service-account key, password, or private key is
-      present anywhere in the repository or in a screenshot. This still needs a
-      final manual repository and screenshot review before submission.
-- [ ] No real classmates' names, student numbers, email addresses, or photos
-      are used. Confirm this again before publishing screenshots and the demo.
+- [ ] `.gitignore` includes `.env`, and `git check-ignore -v .env` confirms it
+- [ ] `git ls-files | grep -iE '\.env$|\.pem$|id_rsa'` prints nothing
+- [ ] `.env.example` is committed, with **placeholder** values only
+- [ ] No connection string, key or password anywhere in the repository,
+      # Security and privacy checklist
 
-Firebase web configuration values in `client/src/firebase.js`, including the
-API key and project identifiers, are client-side values and are not treated as
-server secrets. Database credentials and the Firebase Admin service-account
-JSON must remain server environment variables and must never be placed in a
-`VITE_` variable or committed.
+      Reviewed 2026-09-27 against the repository and the deployed public endpoints.
+      Statuses are based on checks recorded below; manual checks that I have not
+      completed remain No rather than being assumed safe.
 
-Deleting a file later does **not** remove it from the history. If you commit a
-credential, **rotate it first**, at the service, and clean up the history second.
-The rotation is the fix; the cleanup is hygiene.
+      ## Before the first push
 
-## The application
+      - [x] **Yes** — `.gitignore` lists `.env` and `.env.*`, and allows
+            `.env.example`; `git check-ignore -v .env` confirmed `.env` is ignored.
+      - [x] **Yes** — `git ls-files` found no tracked `.env`, `.pem`, or `id_rsa`
+            files. Three placeholder examples are tracked at the repository, client, and
+            server levels.
+      - [x] **Yes** — the committed `.env.example` files use placeholders or local
+            development values. The client example's API variable name is stale; the app
+            and workflow use `VITE_API_BASE`.
+      - [ ] **No** — the README contains local-only PostgreSQL demo credentials, and
+            `client/src/firebase.js` contains public Firebase web configuration. These
+            are not the Firebase Admin private key, but this does not pass the template's
+            strict “no key or password in the repository” check. A Firebase Admin key was
+            also shared outside its intended secret store; revoke it before use.
+      - [ ] **No** — a manual review of `student.json`, commit author identity, source,
+            screenshots, and demo assets is not complete. Git history contains one
+            distinct author email address; confirm it is not a personal address before
+            submission. No email value is reproduced here.
 
-- [x] Current SQL queries use parameter placeholders and pass values separately
-      in arrays.
-- [ ] Input is validated **on the server**, including length limits on every
-      text field. The current routes only perform basic required-field checks.
-- [ ] CORS is restricted to the deployed client origin. The draft currently
-      falls back to `*` when `CLIENT_ORIGIN` is not set, so production config
-      must set and enforce an allowlist.
-- [ ] `NODE_ENV=production` is configured on the API host and responses do not
-      expose stack traces. The API is not deployed yet.
-- [ ] `helmet` is installed and enabled. It is not currently in the server
-      dependencies.
-- [ ] Rate limiting is configured. The current draft has no deployed
-      money-taking or password route, but sign-in and write endpoints should be
-      rate limited when the API is deployed.
-- [x] The app uses Google sign-in through Firebase; it does not collect or
-      store application passwords.
-- [ ] The client uses the pet, diary, and vet routes that check Firebase UID
-      ownership in database queries. The server routes contain these checks,
-      but the client still stores these records locally.
-- [ ] `npm audit` has been run for both client and server dependencies, with
-      fixes reviewed.
+      Deleting a file later does **not** remove it from history. Revoke the exposed
+      Firebase Admin key in Google Cloud, generate a replacement, and put the new
+      JSON only in Render. Do not commit it or place it in a `VITE_` variable.
 
-```bash
-npm install helmet
-```
+      ## The application
 
-```js
-import helmet from 'helmet'
-app.use(helmet())
-```
+      - [x] **Yes** — SQL values are parameterized in `server/routes/pets.js` and
+            `server/routes/petRecords.js`; values are passed separately to `pool.query`.
+      - [ ] **No** — server validation checks only some required fields. Consistent
+            type checks and length limits for all text/date/photo fields are missing.
+      - [ ] **No / not fully verified** — `server/index.js` restricts CORS to the
+            single `CLIENT_ORIGIN` and refuses to start in production if it is unset, but
+            I could not verify the Render value or complete a cross-origin browser test.
+      - [ ] **No / not fully verified** — Render serves the API, but I have not
+            verified `NODE_ENV=production` in host settings or tested error responses for
+            stack traces/connection details.
+      - [ ] **No** — `helmet` is not installed or enabled in `server/`.
+      - [ ] **No** — no rate limiter is configured on the API routes.
+      - [x] **N/A** — the app uses Google sign-in and does not store app-managed
+            passwords, so there is no password hash to check.
+      - [ ] **No** — pet update/delete SQL includes `owner_uid` in its query, but
+            diary and vet routes check pet ownership in a separate query before querying
+            records by `pet_id`; they do not put the owner check in each data query as
+            this checklist requires.
+      - [ ] **No** — Render's install reported 8 moderate dependency advisories. Run
+            and review `npm audit` for both `client/` and `server/` before fixing or
+            accepting them.
 
-## Privacy
+      ## Privacy
 
-The half that matters more, because it is about other people.
+      - [ ] **No / manual review pending** — confirm that no classmates' names,
+            numbers, emails, or photos appear in the repository, screenshots, or demo.
+      - [x] **Yes** — sample pet and rehoming entries in `client/src/App.jsx` are
+            invented. `server/schema.sql` creates tables and contains no real-person seed
+            records.
+      - [ ] **No / not verified** — I have not recorded whether real people tested
+            the app or confirmed their test data was removed. If nobody tested it, update
+            this to N/A with that reason.
+      - [ ] **No** — the interface warns that rehoming contact details are public,
+            but it does not yet give a complete notice describing Google identity data
+            and the pet/diary/vet information collected.
+      - [ ] **No / manual review pending** — verify every face in screenshots and
+            demo media is generated, stock, or used with permission.
 
-- [x] Demo seed data is invented and does not represent a real person or pet.
-- [ ] **No real classmates' names, numbers, emails, or photos** appear in seed
-      data, screenshots, or the demo video. Complete this manual review before
-      submission.
-- [ ] If real people tested the app, their test data must be deleted before
-      submission.
-- [ ] The app and project documentation must explain that Google identity data
-      is used for sign-in and that pet, diary, vet, and rehoming information is
-      collected by the app. The current draft still needs a visible privacy
-      notice in the interface.
-- [ ] Any face in a screenshot is stock, generated, or belongs to someone who
-      gave permission.
+      The live API's `/health` and public `GET /api/pets/rehoming` endpoints returned
+      200. Firebase-authenticated routes have not been tested. Private pet, diary,
+      and vet records remain in browser `localStorage`, keyed by Firebase UID; this
+      separates the app's view on one browser but is not server security and does not
+      sync records across devices.
 
-The privacy boundary is intended to be: pet profiles, diary memories, and vet
-records are private to the signed-in owner; only information deliberately
-published as a rehoming post is public. The client currently stores private
-records in browser `localStorage`, keyed by Firebase UID. This keeps one
-account's records from appearing in another account's app view on the same
-browser, but it is not a security boundary: browser data can be inspected or
-changed, and records do not follow the user to another device. The API verifies
-Firebase ID tokens and checks owner UID in database queries, but the client
-does not yet use these private routes. Rehoming posts are public when published
-to the configured API. A local preview post is not added to the shared feed,
-but its Copy link action creates a URL containing a snapshot of the listing,
-including the contact details entered for rehoming. Anyone with that link can
-read and share the snapshot; do not include contact information you do not want
-to make public.
+      ## Journal risk paragraph
 
-If your project handles personal information about real people, you are inside
-the Philippine Data Privacy Act. Collect the minimum, say what you collect, and
-do not collect anything you cannot justify.
-
-## Week 1 journal note
-
-The riskiest part of tailTALES is privacy ownership: the live first draft uses
-browser `localStorage`, so its private-data promise is not production-ready
-and data can be visible to another user of the same browser. I addressed the
-planned root cause by creating an Express/PostgreSQL API that verifies Firebase
-ID tokens and includes the authenticated owner UID in pet and record queries.
-I knowingly accepted that this protection is not active yet because the client
-has not been switched to the API. Before submission, I need to connect and
-deploy the API, restrict CORS, add server-side validation and security headers,
-run dependency audits, and add a clear privacy notice.
+      My biggest privacy risk is that pet, diary, and vet records are still stored
+      in browser `localStorage`, so UID-based keys are not a real security boundary
+      and records do not sync across devices. I deployed owner-scoped PostgreSQL
+      routes and verified the public rehoming read, but the client has not moved its
+      private data flows to those routes. I knowingly accept that limitation for the
+      current demo. Before testing protected endpoints, I must revoke the Firebase
+      Admin key that was shared outside its secret store and configure a replacement
+      privately in Render; I also need to finish the manual privacy review and
+      dependency audit.
