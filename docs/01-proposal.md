@@ -7,6 +7,9 @@ Paste or rewrite the proposal here, and **keep it updated** as things change. A
 proposal that still describes a feature you cut in October is worse than no
 proposal.
 
+The current visual reference is the [interactive mockup](02-mockup.md), with
+its source and exported screens in `assets/wireframes/new/`.
+
 ## App name
 
 tailTALES
@@ -31,13 +34,15 @@ that anyone can see so the pet can find a new home.
 
 ## Sections or routes this app needs
 
-The app has three screens, and each one is its own route.
+The app has four primary screens. Sign-in and My Pets share `/` depending on
+whether the visitor is signed in; Pet Diary and Rehoming have their own routes.
 
 | # | Section / route | What it is for |
 | --- | --- | --- |
-| 1 | My Pets (`/`) | After signing in with Google, shows the owner's pet profiles as cards and has a form to add a new pet with its name, species, breed, birthday, and photo. If nobody is signed in, it shows a short message and a "Continue with Google" button. |
-| 2 | Pet Diary (`/pets/:id`) | Shows one pet's profile with two tabs, Diary and Vet Records, so the owner can add photos, captions, and vaccine records. It also has a "Rehome this pet" button. |
-| 3 | Rehoming (`/rehoming`) | A public list of rehoming posts that anyone can open without signing in. Signed-in owners can also publish a new post and remove their own posts. |
+| 1 | Sign-in (`/`, signed out) | Offers Google sign-in and lets visitors browse the public rehoming page without signing in. |
+| 2 | My Pets (`/`, signed in) | Shows the owner's pet profiles and lets them add, edit, or delete pets. |
+| 3 | Pet Diary (`/pets/:id`) | Shows one pet's profile with Diary and Vet Records tabs; owners can add, edit, and delete records. It also links to rehoming. |
+| 4 | Rehoming (`/rehoming`) | Shows public rehoming posts. Signed-in owners can publish and remove posts; visitors can browse and share them. |
 
 ## State: what data does the app hold?
 
@@ -69,6 +74,12 @@ there.
 
 ## What each screen contains
 
+### Screen: Sign-in and My Pets
+
+- Sign-in offers Google authentication and a public link to Rehoming.
+- My Pets shows pet cards and an Add a pet action. The pet form captures a
+  name, species, breed, birthday, and photo.
+
 ### Screen: Pet Diary
 
 - **Block 1:** The pet header, with the photo, name, breed, birthday, and a
@@ -79,6 +90,12 @@ there.
   and notes.
 - **Block 4:** The list of diary entry cards, or the list of vet records,
   depending on the tab.
+
+### Screen: Rehoming
+
+- A public list of posts, with a clear notice that contact details are public.
+- Signed-in owners can choose one of their pets, add a description and contact
+  details, and publish a post. Visitors can open and share posts.
 
 ## Content you need to gather
 
@@ -111,28 +128,22 @@ there.
 
 ## Current integration status
 
-The deployed client uses Firebase Authentication and stores private pet,
-diary, and vet data in browser `localStorage`; these operations are not yet
-connected to PostgreSQL. The Render API and Neon database are deployed. Public
-`GET /api/pets/rehoming` returns data when the client uses `VITE_API_BASE`;
-confirm that GitHub Pages has this variable before treating the live client as
-API-connected. Firebase-authenticated routes still need verification after the
-exposed Admin service-account key is revoked and replaced.
+The client source uses Firebase Authentication and the authenticated API for
+private pet, diary, and vet data. Production rollout is not complete: apply the
+database migration, deploy the GitHub Pages build with `VITE_API_BASE`, and
+verify authenticated flows in two browsers. Existing browser records are not
+automatically imported. Public `GET /api/pets/rehoming` is available when the
+client has the API base URL configured. Retest authenticated routes after the
+exposed Admin service-account key is revoked and replaced. See the
+[security and privacy notes](06-security-and-privacy.md) for rollout checks.
 
 ## One risk
 
-The part I am least sure about is connecting Firebase Authentication to an
-Express API that stores everything else in PostgreSQL rather than Firestore.
-I have not verified a Firebase ID token on a server before, so I am not sure
-how smoothly `firebase-admin` will plug into the existing Express middleware,
-or how much friction there will be keeping a `users` table in sync with
-whoever Firebase says is signed in. Photos are also a worry, since I am not
-using Firebase Storage or paying for file uploads: owners will paste an image
-link, or the app will fall back to a placeholder photo from the Dog CEO or
-TheCatAPI image endpoint. If the Firebase-to-Postgres link takes too long to
-get working, my backup plan is to keep auth entirely client-side (Firebase
-only, no server verification) for the first working version, and add the
-server-side token check once the rest of the app is functional.
+The main remaining risk is completing the production rollout without exposing
+private pet records: the Pages build must use the API, authenticated requests
+must be verified after credential rotation, and the database migration and
+two-browser checks must pass. Photos are uploaded through the app; confirm
+their storage and privacy behavior against the security notes before release.
 
 ## The parts most likely to drift
 
