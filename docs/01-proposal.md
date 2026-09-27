@@ -10,6 +10,16 @@ proposal.
 The current visual reference is the [interactive mockup](02-mockup.md), with
 its source and exported screens in `assets/wireframes/new/`.
 
+## The parts most likely to drift
+
+- **Core features.** Move anything you cut to stretch goals rather than
+  deleting it. The record of what you cut, and why, is worth marks.
+- **Where each piece is hosted.** Client, API, database, and the free tier's
+  catch for each. If you change host, note the date and the reason.
+- **The date demo mode goes off.** If that date has passed and it is still
+  on, that is the most important line in this file.
+- **Risks.** Which have shrunk, which grew, which turned out to be nothing.
+
 ## App name
 
 tailTALES
@@ -144,13 +154,3 @@ private pet records: the Pages build must use the API, authenticated requests
 must be verified after credential rotation, and the database migration and
 two-browser checks must pass. Photos are uploaded through the app; confirm
 their storage and privacy behavior against the security notes before release.
-
-## The parts most likely to drift
-
-- **Core features.** Move anything you cut to stretch goals rather than
-  deleting it. The record of what you cut, and why, is worth marks.
-- **Where each piece is hosted.** Client, API, database, and the free tier's
-  catch for each. If you change host, note the date and the reason.
-- **The date demo mode goes off.** If that date has passed and it is still
-  on, that is the most important line in this file.
-- **Risks.** Which have shrunk, which grew, which turned out to be nothing.
