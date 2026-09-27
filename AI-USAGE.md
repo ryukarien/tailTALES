@@ -238,6 +238,15 @@ it in your own words.
 
 ### The AI-written part I understand best
 
+- **File:** `client/src/firebase.js` (Firebase web-client setup)
+- **Commit:** [Initial Firebase setup (`7ced9ac`)](https://github.com/ryukarien/tailTALES/commit/7ced9ac)
+- **What it does and why I understand it:** This file connects the browser app
+  to my Firebase project and exports the Auth service and Google sign-in
+  provider. `App.jsx` uses those exports when it signs a user in and checks
+  whether they are still signed in. The values in this file identify the public
+  web app; they are not the private Firebase Admin service-account key used by
+  the server.
+
 - **File:** `client/src/App.jsx` (main app flow)
 - **Commits:** [App screens and state (`22d7a0e`)](https://github.com/ryukarien/tailTALES/commit/22d7a0e) and [API/privacy updates (`ba02e85`)](https://github.com/ryukarien/tailTALES/commit/ba02e85)
 - **What it does and why I understand it:** This is the main file that decides
