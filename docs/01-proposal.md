@@ -105,16 +105,19 @@ there.
 | Piece | Host | Notes |
 | --- | --- | --- |
 | Client | GitHub Pages | already wired up via the template's deploy workflow |
-| API | (TBD — Render, Railway, or Fly.io) | note the date and reason if this changes |
-| Database | (TBD — Neon or Supabase) | note the date and reason if this changes |
+| API | Render (`https://tailtales-api.onrender.com`) | deployed 2026-09-27; public health and rehoming read endpoints verified |
+| Database | Neon PostgreSQL | deployed 2026-09-27; schema from `server/schema.sql` applied |
 | Auth | Firebase Authentication (Spark/free plan) | Google sign-in provider only |
 
-## Demo mode
+## Current integration status
 
-Demo mode (`VITE_USE_MOCK_API`) is on by default while the client is being
-built against `mockApi.js`. **Target date to turn it off:** (fill in once the
-API and database are deployed). If that date has passed and this is still on,
-that is the most important line in this file.
+The deployed client uses Firebase Authentication and stores private pet,
+diary, and vet data in browser `localStorage`; these operations are not yet
+connected to PostgreSQL. The Render API and Neon database are deployed. Public
+`GET /api/pets/rehoming` returns data when the client uses `VITE_API_BASE`;
+confirm that GitHub Pages has this variable before treating the live client as
+API-connected. Firebase-authenticated routes still need verification after the
+exposed Admin service-account key is revoked and replaced.
 
 ## One risk
 

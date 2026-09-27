@@ -3,7 +3,9 @@
 A private digital pet diary — profiles, memories, and vet records — with a public board for rehoming a pet when the time comes.
 
 **Live site:** https://ryukarien.github.io/tailTALES/
-**API:** not deployed yet — see [Deploying the API](#deploying-the-api)
+**API base for `VITE_API_BASE`:** `https://tailtales-api.onrender.com`
+**API endpoints for review:** [Health](https://tailtales-api.onrender.com/health) · [Public rehoming data (JSON)](https://tailtales-api.onrender.com/api/pets/rehoming)
+Both public endpoints returned `200` during verification. The API does not serve a web page at `/`; private routes require Firebase authentication and have not yet been verified.
 **Demo video:** Add the final video link here
 
 
@@ -28,8 +30,8 @@ React and Vite on the front end. Firebase Authentication (Google sign-in) for
 identity. The Express/PostgreSQL backend contains owner-scoped pet and record
 routes. The client uses it for public rehoming reads and publishing when
 `VITE_API_BASE` is configured, but private pet, diary, and vet operations still
-use browser storage. The client deploys to GitHub Pages; the API and database
-need a host that can run Node (see the table below).
+use browser storage. The client deploys to GitHub Pages; the API runs on Render
+and PostgreSQL is hosted on Neon.
 
 ## Demo mode
 
@@ -40,20 +42,20 @@ remain local until they are connected to the backend.
 | Configuration | What happens | Status |
 | --- | --- | --- |
 | `VITE_API_BASE` unset | Pet, diary, and vet data use browser `localStorage`, separated by Firebase UID. Rehoming uses local preview data if the API is unavailable. | **UI preview only; private data is browser-local and not server-secured. Shared card links contain a listing snapshot but do not add it to the public feed.** |
-| `VITE_API_BASE` points to the API | The client fetches and publishes public rehoming posts through Express. Pet, diary, and vet data still use browser storage. | **Partial integration; the API must be deployed and configured.** |
+| `VITE_API_BASE` points to the API | The client uses Express for public rehoming reads and attempts authenticated publishing. Pet, diary, and vet data still use browser storage. | **Public rehoming reads return 200. Verify `VITE_API_BASE` on GitHub Pages and test authenticated publishing after rotating the exposed Firebase Admin key.** |
 
 **Demo mode is a starting point and a fallback, not the finished project.** The
 remaining goal is to connect private pet and record operations to the API so
 they are server-authorized and available across devices, while keeping only
 deliberately published rehoming posts public.
 
-GitHub Pages serves static files and cannot run Node, so the API and database
-can never live there. Once the switch happens, they go somewhere else:
+GitHub Pages serves static files and cannot run Node. This project hosts its
+API and database separately:
 
 | Piece | Options |
 | --- | --- |
-| **API** | Render, Railway, Fly.io, Koyeb, or a VPS |
-| **Database** | Neon, Supabase, Railway, or your own PostgreSQL |
+| **API** | Render: [tailtales-api.onrender.com](https://tailtales-api.onrender.com) |
+| **Database** | Neon PostgreSQL; schema applied from `server/schema.sql` |
 
 ## Screens
 
@@ -65,7 +67,8 @@ The app follows the proposal and wireframes in the `docs/` folder:
 
 The layout adapts for mobile screens. Desktop uses a top navigation bar; mobile
 moves the main navigation to the bottom while keeping account actions in the
-header.
+sticky header. A mobile tab-bar overlap was fixed in `client/src/mockup.css`;
+deploy the latest client build to publish this change to GitHub Pages.
 
 ## Running it yourself
 
@@ -112,14 +115,18 @@ and placeholders only; copy it to `server/.env` for local development.
 | `FIREBASE_SERVICE_ACCOUNT` | server | Firebase Admin credentials (JSON), used to verify each request's ID token |
 | `CLIENT_ORIGIN` | server | the client's origin, for CORS |
 | `PORT` | server | set by the host, do not set it yourself |
-| `VITE_FIREBASE_*` | client, at build time | Firebase web config — public by design, see Firebase Setup below |
+| Firebase web config | client | Public client configuration currently defined in `client/src/firebase.js`; it is not the Firebase Admin credential |
 | `VITE_API_BASE` | client, at build time | API's public URL, no trailing slash; used for public rehoming reads and publishing |
 
 Every `VITE_` value is compiled into the built JavaScript and is **public**. Never put a database password or service-account key in one.
 
 ## Firebase setup
 
-Google sign-in is configured in `client/src/firebase.js`. To use a different Firebase project, create `client/.env.local` with `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, and `VITE_FIREBASE_APP_ID`.
+Google sign-in is configured in `client/src/firebase.js`. The current client
+reads its public Firebase web config directly from that file; it does not
+currently read `VITE_FIREBASE_*` variables. These web config values are public
+client settings, not the Firebase Admin service-account credential. Never put
+the Admin credential in the client or in a `VITE_` variable.
 
 In the Firebase console: open **Authentication**, enable the **Google** provider, and add your local development URL and GitHub Pages URL under authorized domains.
 
@@ -128,26 +135,33 @@ In the Firebase console: open **Authentication**, enable the **Google** provider
 **Client, to GitHub Pages.** Already wired up in `.github/workflows/deploy-pages.yml`.
 
 1. **Settings > Pages > Build and deployment > Source: GitHub Actions.**
-2. Add `VITE_API_BASE` under **Settings > Secrets and variables > Actions > Variables** when the API is deployed, then re-run the workflow to enable server-backed rehoming posts.
+2. Add `VITE_API_BASE` under **Settings > Secrets and variables > Actions > Variables** with `https://tailtales-api.onrender.com`, then re-run the workflow to enable server-backed rehoming posts.
 
 The repository must be **public** for Pages to serve it on a free account.
 
 ### Deploying the API
 
-The API can run on Render with PostgreSQL hosted on Neon. These steps deploy
-the current API, which serves the public rehoming flow; private pet and diary
-operations still use browser storage.
+The API runs on Render with PostgreSQL hosted on Neon. These notes describe the
+current deployment, which serves the public rehoming flow; private pet and diary
+operations still use browser storage. The Neon database and schema are set up,
+and the Render service is deployed at `https://tailtales-api.onrender.com`.
+`/health` and `GET /api/pets/rehoming` returned 200 during verification.
+Firebase-authenticated requests still need verification. Revoke the Firebase
+Admin key previously shared outside the host and replace it privately in Render
+before testing protected endpoints.
 
-1. Create a PostgreSQL database on Neon. In its SQL Editor, run the contents
-  of `server/schema.sql`.
+1. For a new environment, create a PostgreSQL database on Neon and run
+  `server/schema.sql` in its SQL Editor. For this project, the schema has
+  already been applied to the Neon database.
 2. Create a Render **Web Service** connected to this GitHub repository. Set
   **Root Directory** to `server`, **Build Command** to `npm ci`, and
   **Start Command** to `npm start`. The service health-check path can be
   `/health`.
 3. Add these environment variables in Render. Get `DATABASE_URL` from Neon;
   generate `FIREBASE_SERVICE_ACCOUNT` in Firebase Console > Project settings >
-  Service accounts. Paste the service-account JSON into Render as a secret;
-  never commit it or add it to a `VITE_` variable.
+  Service accounts. Revoke the previously exposed key and generate a new one;
+  paste the replacement JSON into Render as a secret. Never commit it or add it
+  to a `VITE_` variable.
 
   | Variable | Value |
   | --- | --- |
@@ -155,12 +169,13 @@ operations still use browser storage.
   | `FIREBASE_SERVICE_ACCOUNT` | Firebase service-account JSON |
   | `CLIENT_ORIGIN` | `https://ryukarien.github.io` |
 
-4. Deploy the Render service and confirm its `/health` URL returns `{"status":"ok"}`.
-5. In GitHub repository **Settings > Secrets and variables > Actions >
-  Variables**, add `VITE_API_BASE` with the Render service origin, without a
-  trailing slash (for example, `https://tailtales-api.onrender.com`). Re-run
-  the **Deploy client to GitHub Pages** workflow.
-6. Replace the API status at the top of this README with the deployed API URL.
+4. The Render service is deployed; `/health` and `GET /api/pets/rehoming` have
+  been verified. Sign-in protected routes still need an authenticated test.
+5. Add `VITE_API_BASE` in GitHub repository **Settings > Secrets and variables
+  > Actions > Variables** with `https://tailtales-api.onrender.com`, without a
+  trailing slash. Re-run the **Deploy client to GitHub Pages** workflow to enable
+  client-side public rehoming reads. Verify authenticated publishing separately.
+6. Keep the API base and health links at the top of this README current.
 
 The API refuses to start in production if `CLIENT_ORIGIN` is missing. `PORT`
 is supplied by Render; do not add it manually. For local development, copy
@@ -177,7 +192,7 @@ client/
   src/firebase.js              Firebase Google Authentication setup
   src/api/dogApi.js            Dog CEO breed integration
   src/api/api.js                API client; currently used for public rehoming reads/publishing
-  src/styles.css                Visual system and responsive layout
+  src/mockup.css                Active visual system and responsive layout
 server/
   schema.sql                    pets, diary_entries, vet_records tables
   db.js                          Postgres connection pool
@@ -207,7 +222,7 @@ endpoint, which never joins the diary or vet tables.
 ## Known limitations
 
 - Pet, diary, and vet data remains browser-local and does not sync between devices. UID-specific keys prevent another account from seeing the records in the app UI on the same browser, but this is not a substitute for server-side authorization.
-- The Postgres API in `server/` is not deployed yet. The client uses its public rehoming routes when configured, but has not switched private pet and record operations to the API.
+- The API is deployed and its public rehoming read returns data. Configure `VITE_API_BASE` in GitHub Actions for the Pages client; Firebase-authenticated publishing still needs verification, and private pet/diary/vet flows remain browser-local.
 - Photos are stored as browser image data, not uploaded to permanent storage.
 - Instagram sharing has no true prefilled web-share API; it falls back to a mobile share-intent or copy image + caption on desktop.
 

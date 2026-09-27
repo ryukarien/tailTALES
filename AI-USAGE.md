@@ -19,10 +19,14 @@ At least six entries. One per real use. Every entry needs a commit link.
   project, enabling the Google sign-in provider, registering a web app, and
   wiring `signInWithGoogle`/`onAuthStateChanged` into the client — and asked
   Gemini to implement it in my project folder.
-- **What it gave back:** `: A firebase.js (or firebase.ts) configuration file initializing the Firebase app and Auth service, the implementation of a signInWithGoogle function using signInWithPopup with GoogleAuthProvider, an onAuthStateChanged state listener to monitor user session changes, and a brief walkthrough of the Firebase Console steps to enable the Google sign-in provider.
-- **What I kept, what I changed, and why:** I kept the core Firebase initialization code and the modular Auth SDK logic completely intact. Specifically, I retained the standard initializeApp setup, the getAuth() service instantiation, and the initialization of the GoogleAuthProvider. I also kept the core structure of the signInWithPopup function and the onAuthStateChanged listener as they are the recommended, secure methods for triggering Google Sign-In and monitoring user authentication states in a web app.
-  and why>`
-- **Commit:** https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
+- **What it gave back:** A Firebase web-app configuration in `firebase.js`,
+  plus the Auth SDK setup needed by the client. The sign-in UI and auth-state
+  listener live in `App.jsx`.
+- **What I kept, what I changed, and why:** I kept the standard
+  `initializeApp`, `getAuth`, and `GoogleAuthProvider` setup. I learned that
+  the browser Firebase config is public app configuration; the Firebase Admin
+  service-account JSON is a separate private server credential.
+- **Commit:** [Firebase app and Auth setup (`7ced9ac`)](https://github.com/ryukarien/tailTALES/commit/7ced9ac)
 
 ### 2026-09-22 - Building the My Pets, Pet Diary, and Rehoming screens
 
@@ -43,7 +47,7 @@ At least six entries. One per real use. Every entry needs a commit link.
   Had it fix the duplicate `App.jsx` export and the over-broad sign-in gate
   on `/rehoming` (below) before I accepted the result, since neither matched
   what I'd actually specified.
-- **Commit:** https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
+- **Commit:** [App screens (`22d7a0e`)](https://github.com/ryukarien/tailTALES/commit/22d7a0e)
 
 ### 2026-09-24 - Hero Edit/Delete, emoji placeholders, upload box, and page Share panel
 
@@ -66,7 +70,7 @@ At least six entries. One per real use. Every entry needs a commit link.
   logic, since duplicating that across the hero and the card would've
   been the kind of drift I'd have had to catch in review anyway. Had it
   fix the ordering bug in Case 3 before accepting the result.
-- **Commit:** https://github.com/YOUR-USERNAME/YOUR-REPO/commit/SHA
+- **Commit:** [Hero and rehoming UI (`22d7a0e`)](https://github.com/ryukarien/tailTALES/commit/22d7a0e)
 
 ### 2026-09-24 - Postgres backend for pet/diary/rehoming ownership
 
@@ -94,7 +98,7 @@ At least six entries. One per real use. Every entry needs a commit link.
   reading/writing the `localStorage` blob, and test the ownership checks
   against a real Postgres instance before I can say what I kept vs.
   changed from what it gave me.
-- **Commit:** https://github.com/YOUR-USERNAME/YOUR-REPO/commit/SHA
+- **Commit:** [Postgres API implementation (`22d7a0e`)](https://github.com/ryukarien/tailTALES/commit/22d7a0e)
 
 ### 2026-09-26 - Account-scoped pet diary and form updates
 
@@ -130,6 +134,25 @@ At least six entries. One per real use. Every entry needs a commit link.
   explicit because those posts cannot resolve in another browser.
 - **Commit:** https://github.com/ryukarien/tailTALES/commit/ba02e85
 
+### 2026-09-27 - Deploying and checking the public API
+
+- **Tool:** GitHub Copilot
+- **What I asked for:** Asked it to help me deploy my Express API with Render
+  and Neon, run the database schema, check the public API links, and update my
+  project documentation with the real deployment status.
+- **What it did:** Helped set up the Render service from the `server/` folder,
+  apply `server/schema.sql` to Neon, and check `/health` and
+  `GET /api/pets/rehoming`. Both public endpoints returned 200 during the
+  check. It also helped explain that the API base URL is for client requests,
+  while `/` is not a webpage route.
+- **What I kept, what I changed, and why:** I kept the separate API and
+  database setup and linked the public endpoints in the README so my instructor
+  can inspect them. I did not claim the private pet, diary, vet, or Firebase-
+  authenticated routes are ready: those client flows still use local storage,
+  and the exposed Firebase Admin key must be revoked and replaced before
+  protected routes are tested.
+- **Commits:** [API routes and schema (`22d7a0e`)](https://github.com/ryukarien/tailTALES/commit/22d7a0e) and [API deployment preparation (`ba02e85`)](https://github.com/ryukarien/tailTALES/commit/ba02e85). Render and Neon resource setup is provider-side and has no Git commit.
+
 ## 2. Where the AI got it wrong
 
 Three cases. Be specific. If you write that the AI was never wrong, this section
@@ -146,7 +169,7 @@ scores zero.
 - **What I did instead:** Opened `App.jsx`, confirmed the old template code
   was just dead weight below the working version, deleted it, and reran the
   build to confirm the file compiled with a single clean export.
-- **Commit:** https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
+- **Commit:** [App.jsx correction (`22d7a0e`)](https://github.com/ryukarien/tailTALES/commit/22d7a0e)
 
 ### Case 2 - Rehoming was gated behind sign-in when it should be public
 
@@ -160,7 +183,7 @@ scores zero.
 - **What I did instead:** Had it open the `/rehoming` route publicly and
   keep the sign-in check only on the publish/remove actions, then rebuilt
   and checked the route loaded without being signed in.
-- **Commit:** https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
+- **Commit:** [Public rehoming implementation (`22d7a0e`)](https://github.com/ryukarien/tailTALES/commit/22d7a0e)
 
 ### Case 3 - Hero action effect referenced `id` before it was declared
 
@@ -176,7 +199,7 @@ scores zero.
   computed, move the hero-action effect below that line, rebuild, and
   rerun the same Playwright check to confirm the click actually mutated
   the pet.
-- **Commit:** https://github.com/YOUR-USERNAME/YOUR-REPO/commit/SHA
+- **Commit:** [Hero action implementation (`22d7a0e`)](https://github.com/ryukarien/tailTALES/commit/22d7a0e)
 
 ## 3. Who wrote what
 
@@ -189,7 +212,7 @@ it in your own words.
 ### Written by me
 
 - **File:** `client/src/styles.css`
-- **Commit:** https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
+- **Commit:** [Stylesheet work (`22d7a0e`)](https://github.com/ryukarien/tailTALES/commit/22d7a0e)
 - **What it does and why it is built this way:** Copilot's first pass at
   `styles.css` worked but wasn't organized in a way I could navigate —
   rules for different components and screens were interleaved rather than
@@ -202,28 +225,36 @@ it in your own words.
   Copilot's implementation of it — but the structure and section
   boundaries are mine, so the file is actually maintainable.
 
+### My route-folder organization
+
+- **Files:** `server/routes/pets.js` and `server/routes/petRecords.js`
+- **What I did:** I organized the routes by the way I prefer to navigate the
+  backend: pet profile and rehoming endpoints are in `pets.js`, while diary and
+  vet-record endpoints are in `petRecords.js`. I also reformatted the route
+  handlers and comments so I can scan the ownership checks and SQL calls more
+  easily. The API logic was AI-assisted; this entry describes how I chose to
+  arrange and review the files.
+- **Commit:** [Route modules added (`22d7a0e`)](https://github.com/ryukarien/tailTALES/commit/22d7a0e). My later readability edits are currently uncommitted.
 
 ### The AI-written part I understand best
 
-- **File:** `client/src/firebase.js` (Google Sign-In setup)
-- **Commit:** `https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56
-- **What it does and why we kept it:** Initializes the Firebase app from the
-  `VITE_FIREBASE_*` env variables and exposes `signInWithGoogle`,
-  `signOutUser`, and `watchAuthState`, using the `GoogleAuthProvider` and
-  `signInWithPopup` functions. Kept close to what Gemini produced because it
-  matches the standard single-provider sign-in pattern — `<add your own
-  sentence on why you understand and trust this file>`
+- **File:** `client/src/App.jsx` (main app flow)
+- **Commits:** [App screens and state (`22d7a0e`)](https://github.com/ryukarien/tailTALES/commit/22d7a0e) and [API/privacy updates (`ba02e85`)](https://github.com/ryukarien/tailTALES/commit/ba02e85)
+- **What it does and why I understand it:** This is the main file that decides
+  which screen to show and what happens when I use the app. It watches Firebase
+  sign-in, keeps each signed-in user's pet, diary, and vet data under a
+  user-specific key in this browser, and handles actions such as adding or
+  editing a pet. Rehoming can call the API, but the private pet and record
+  screens still use `localStorage`. I understand that a user-specific browser
+  key separates the app's views on one device, but it is not server security
+  and does not sync data between devices.
 
-- **File:** `client/src/styles.css`
-- **Commit:** `https://github.com/ryukarien/tailTALES/commit/400000a90dfbd1481123f549bea2ecd9a5443c56`
-- **What it does and why we kept it:** Implements the tailTALES design
-  system as CSS custom properties and component styles — the colour
-  palette, type scale, and spacing values are the ones I worked out myself
-  in `docs/03-design-system.md` from my Figma wireframes; Copilot wrote the
-  CSS file that turns those decisions into code, including the responsive
-  700px breakpoint. I understand it well enough to have caught and had it
-  fix the bug where a stray `+` character in front of `@media` was silently
-  breaking the mobile styles.
+- **File:** `client/src/mockup.css` (active app stylesheet)
+- **Commit:** [Active stylesheet (`22d7a0e`)](https://github.com/ryukarien/tailTALES/commit/22d7a0e)
+- **What it does and why we kept it:** Implements the app's visual system,
+  component layouts, and responsive rules. I can connect its colors and
+  spacing to `docs/03-design-system.md`, and I understand that its mobile
+  media query changes the header, bottom tabs, and single-column layouts.
 
 
 

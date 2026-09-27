@@ -11,18 +11,23 @@ repository, so it is versioned alongside the thing it describes.
 | [04-weekly-reports.md](04-weekly-reports.md) | a few lines a week | every week |
 | [05-demo-video.md](05-demo-video.md) | the recording, and its plan | the end |
 | [06-security-and-privacy.md](06-security-and-privacy.md) | what you checked before making this public | before your first push |
+| [../SECURITY-CHECKLIST.md](../SECURITY-CHECKLIST.md) | graded security evidence checklist | update before release |
 
 Put images in `assets/`. A screenshot named `assets/screenshot.png` is referenced
 by the main README, and a README with an image reads as finished in a way one
 without an image does not.
 
-## Current implementation note (2026-09-26)
+## Current implementation note (2026-09-27)
 
 The client separates browser-stored pet, diary, and vet records by Firebase
 UID, but those records are not yet backed by the authenticated API and do not
-sync across devices. Public rehoming reads and publishing use the API when
-`VITE_API_BASE` is configured. See the [security and privacy checklist](06-security-and-privacy.md)
-for the current boundary and remaining work.
+sync across devices. The Render API health check and public rehoming read return
+200; set and verify `VITE_API_BASE` in the GitHub Pages workflow before treating
+the deployed client as API-connected. Firebase-authenticated routes need testing
+after the exposed Admin key is revoked and replaced. The mobile header fix is in
+local source and still needs a Pages deployment. See the
+[security and privacy notes](06-security-and-privacy.md) and
+[graded security checklist](../SECURITY-CHECKLIST.md) for current evidence.
 
 **Write these as you go.** A weekly report written on the last day is obvious to
 read and worth very little.

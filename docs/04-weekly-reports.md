@@ -1,6 +1,7 @@
 # Weekly reports
 
-Five minutes a week. Add a new section at the top; never edit an old one.
+Five minutes a week. Keep dated sections in chronological order, oldest first;
+add new reports at the end and do not rewrite completed entries.
 
 The value is entirely in writing them **while it is happening**. What took four
 hours and why is invisible a month later, and it is exactly what your journal
@@ -65,7 +66,8 @@ sync or server-enforced privacy. The API was unavailable during the local
 browser check, so server-backed publishing and cross-device post links still
 need verification against a deployed API.
 
-**Hours.** Not tracked precisely; add the actual time if required for submission.
+**Hours.** Approximately 8 hours, including planning, implementation,
+debugging, documentation, and browser checks.
 
 **Next.** Deploy and configure the API, connect pet and diary/vet operations to
 its authenticated routes, then test account isolation and public rehoming links
@@ -75,6 +77,27 @@ with separate accounts and browsers.
 
 ---
 
-## Week of YYYY-MM-DD
+## Week of 2026-09-27
 
-...
+**Done.** I provisioned a Neon PostgreSQL database and applied
+`server/schema.sql`. I deployed the Express API to Render using the `server/`
+root, `npm ci`, `npm start`, and the free instance plan. The health check and
+public rehoming read endpoint returned 200. I updated the README, security
+checklist, security and privacy notes, and documentation index. I also fixed
+the mobile navigation overlap in the active stylesheet so Sign out remains
+visible above the fixed bottom tabs; the client build passes and the fix is
+verified locally at 320px.
+
+**Stuck.** Firebase-authenticated routes need verification after revoking the
+exposed Firebase Admin key and configuring a replacement in Render. The
+GitHub Pages `VITE_API_BASE` variable and mobile CSS change still need to be
+published and verified. Pet, diary, and vet data remains browser-local. Neon
+network/role settings need review, and Render reported 8 moderate dependency
+advisories during install.
+
+**Hours.** Approximately 4 hours.
+
+**Next.** Revoke and replace the Firebase Admin key, test authenticated API
+requests, set `VITE_API_BASE` in GitHub Actions, and redeploy the client. Then
+verify the mobile header on the public site and continue connecting private pet
+and record operations to the authenticated API.
