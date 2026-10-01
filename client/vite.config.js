@@ -12,9 +12,13 @@ export default defineConfig({
   server: {
     host: 'localhost',
     // Only used by `npm run dev`. It is NOT part of the production build, which
-    // is why the deployed site needs CORS and this does not. See page 8.
+    // is why the deployed site needs CORS and this does not. Set
+    // VITE_API_PROXY_TARGET to use a different API during local development.
     proxy: {
-      '/api': 'http://localhost:4000',
+      '/api': {
+        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:4000',
+        changeOrigin: true,
+      },
     },
   },
 })
