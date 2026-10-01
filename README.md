@@ -7,7 +7,7 @@ A private digital pet diary — profiles, memories, and vet records — with a p
 **API status:** [Open the API root](https://tailtales-api.onrender.com/) (shows `tailTALES API is running!` after the latest API deployment)
 **API endpoints for review:** [Health check](https://tailtales-api.onrender.com/health) · [Public rehoming data (JSON)](https://tailtales-api.onrender.com/api/pets/rehoming)
 The root confirms that the API process is responding; `/health` returns a JSON health status, and `/api/pets/rehoming` returns public rehoming listings. Private routes require Firebase authentication and have not yet been verified.
-**Demo video:** Add the final video link here
+**Demo video:** https://drive.google.com/file/d/1D_8scARoG4k3PZwLTnP1OUoDfsTH5OlO/view?usp=sharing
 
 
 
